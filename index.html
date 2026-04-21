@@ -53,6 +53,14 @@
   }
   #brand .title { font-size: 13px; font-weight: 600; }
   #brand .sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  #brand .gh {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px; margin-left: 4px;
+    color: var(--muted); text-decoration: none;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  #brand .gh:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+  #brand .gh svg { display: block; }
 
   #hud {
     position: fixed; bottom: 16px; left: 20px; z-index: 10;
@@ -191,30 +199,23 @@
   }
 
   #welcome {
-    position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(ellipse at center, rgba(14,18,30,0.35), rgba(0,0,0,0.82));
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    position: fixed; inset: 0; z-index: 30; display: flex;
+    align-items: center; justify-content: center;
+    background: transparent;
+    text-align: center;
     animation: welcomeFadeIn 0.8s ease-out;
   }
   @keyframes welcomeFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
-  #welcome .card {
-    width: 520px; max-width: calc(100vw - 40px);
-    padding: 42px 36px;
-    background: var(--panel-strong);
-    border: 1px solid var(--border-strong);
-    backdrop-filter: blur(28px) saturate(160%);
-    -webkit-backdrop-filter: blur(28px) saturate(160%);
-    border-radius: 18px;
-    box-shadow: 0 30px 120px rgba(0,0,0,0.65);
-    text-align: center;
+  #welcome .stack {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0 20px;
   }
   #welcome h1 {
-    margin: 0 0 10px; font-size: 32px; font-weight: 600;
-    letter-spacing: -0.4px;
+    margin: 0 0 10px; font-size: 36px; font-weight: 600;
+    letter-spacing: -0.5px;
     background: linear-gradient(135deg, #ffffff 0%, #b39dff 60%, #8ad8ff 100%);
     -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent;
@@ -258,13 +259,22 @@
     margin-top: 22px; padding: 8px 20px;
   }
 
-  #brand .title { cursor: pointer; transition: color 0.15s ease; }
-  #brand .title:hover { color: var(--accent); }
+  #brand { cursor: pointer; transition: border-color 0.15s ease; }
+  #brand:hover { border-color: var(--border-strong); }
+  #brand:hover .title { color: var(--accent); }
+  #brand .title { transition: color 0.15s ease; }
 
-  /* Hide main UI before image loaded */
+  /* Main UI fades in after the image finishes forming */
+  #panel, #hud, #brand {
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
   body.landing #panel,
   body.landing #hud,
-  body.landing #brand { display: none !important; }
+  body.landing #brand {
+    opacity: 0;
+    transform: translateY(4px);
+    pointer-events: none;
+  }
 
   #overlay {
     position: fixed; inset: 0; z-index: 40; display: none;
@@ -293,7 +303,7 @@
   .hint { font-size: 10.5px; color: var(--muted-2); margin-top: 4px; line-height: 1.4; }
 </style>
 </head>
-<body>
+<body class="landing">
 
 <div id="canvas-root"></div>
 
@@ -303,6 +313,11 @@
     <div class="title">Pixel Space</div>
     <div class="sub">A Spatial Exploration of Digital Images</div>
   </div>
+  <a class="gh" href="https://github.com/saimalshafi/Pixel-Space" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub" title="View on GitHub">
+    <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+    </svg>
+  </a>
 </div>
 
 <div id="hud">
@@ -434,7 +449,7 @@
 <div id="tip"><span class="sw" id="tip-sw"></span><span id="tip-text">—</span></div>
 
 <div id="welcome">
-  <div class="card">
+  <div class="stack">
     <h1>Pixel Space</h1>
     <p class="subtitle">A Spatial Exploration of Digital Images</p>
     <div class="row">
@@ -1097,9 +1112,12 @@ class ParticleField {
   /** Per-frame update.
    * interaction = {
    *   idleAmount, cursorPull, cursorRadius,
-   *   pointerActive, pointerWorld  (THREE.Vector3),
+   *   pointerActive,
+   *   pointerRayOriginLocal (Vector3), pointerRayDirLocal (Vector3 — unit),
    *   time (seconds), disableDynamics (bool)
    * }
+   * Cursor pull uses a group-LOCAL ray so it's invariant under scene rotation
+   * (auto-rotation + user orbit) and works at any depth (image / RGB / HSV).
    */
   update(dt, interaction) {
     if (!this.count) return;
@@ -1169,8 +1187,14 @@ class ParticleField {
     const pullR = I.cursorRadius ?? 22;
     const pullR2 = pullR * pullR;
     const pActive = disableDyn ? false : !!I.pointerActive;
-    const pw = I.pointerWorld;
-    const pwx = pw ? pw.x : 0, pwy = pw ? pw.y : 0, pwz = pw ? pw.z : 0;
+
+    // Ray in group-local space. Particles get pulled toward the closest
+    // point on this ray, which gives a screen-space-ish feel in every mode.
+    const rOrig = I.pointerRayOriginLocal;
+    const rDir  = I.pointerRayDirLocal;
+    const hasRay = pActive && pullMag > 0 && rOrig && rDir;
+    const oX = hasRay ? rOrig.x : 0, oY = hasRay ? rOrig.y : 0, oZ = hasRay ? rOrig.z : 0;
+    const dX = hasRay ? rDir.x  : 0, dY = hasRay ? rDir.y  : 0, dZ = hasRay ? rDir.z  : 0;
 
     for (let i = 0; i < this.count; i++) {
       const i3 = i * 3;
@@ -1188,19 +1212,27 @@ class ParticleField {
       let fy = (ty - curPos[i3 + 1]) * stiffness;
       let fz = (tz - curPos[i3 + 2]) * stiffness;
 
-      // Cursor pull (subtle magnetic)
-      if (pActive && pullMag > 0) {
-        const dx = pwx - curPos[i3];
-        const dy = pwy - curPos[i3 + 1];
-        const dz = pwz - curPos[i3 + 2];
-        const d2 = dx * dx + dy * dy + dz * dz;
-        if (d2 < pullR2) {
-          const falloff = 1 - d2 / pullR2;
-          const inv = 1 / Math.sqrt(d2 + 0.01);
-          const m = pullMag * falloff * falloff;
-          fx += dx * inv * m;
-          fy += dy * inv * m;
-          fz += dz * inv * m;
+      // Cursor pull — perpendicular distance from particle to the pointer ray.
+      if (hasRay) {
+        const px = curPos[i3], py = curPos[i3 + 1], pz = curPos[i3 + 2];
+        const vx = px - oX, vy = py - oY, vz = pz - oZ;
+        // t = projection of (P - O) onto dir (dir is unit, so no division)
+        const t = vx * dX + vy * dY + vz * dZ;
+        if (t > 0) {                         // in front of the camera
+          // perpendicular vector from ray to particle
+          const perpX = vx - dX * t;
+          const perpY = vy - dY * t;
+          const perpZ = vz - dZ * t;
+          const d2 = perpX * perpX + perpY * perpY + perpZ * perpZ;
+          if (d2 < pullR2) {
+            const falloff = 1 - d2 / pullR2;
+            const inv = 1 / Math.sqrt(d2 + 0.01);
+            const m = pullMag * falloff * falloff;
+            // Force points from particle TOWARD the ray (negative perp).
+            fx -= perpX * inv * m;
+            fy -= perpY * inv * m;
+            fz -= perpZ * inv * m;
+          }
         }
       }
 
@@ -1336,9 +1368,12 @@ const state = {
   sourceImage: null,
   entryStart: 0,
   entering: false,
-  // Pointer world position (for cursor pull)
+  // Pointer state for cursor pull — stored as NDC so the ray can be rebuilt
+  // from the CURRENT camera every frame. This keeps the pull anchored to the
+  // screen cursor location even while the user is orbiting or the scene is
+  // auto-rotating.
   pointerActive: false,
-  pointerWorld: new THREE.Vector3(1e6, 1e6, 1e6),
+  pointerNDC: new THREE.Vector2(0, 0),
   // Export flag suspends the normal render loop
   exporting: false,
 };
@@ -1445,7 +1480,11 @@ ui.btnPNG.addEventListener('click', exportPNG);
 ui.btnVideo.addEventListener('click', exportVideo);
 
 // Info modal: click brand title → open; close button or backdrop → close
-ui.brandTitle.addEventListener('click', () => ui.infoModal.classList.add('on'));
+// Whole brand box is clickable; GitHub link click is exempted so it opens the repo.
+document.getElementById('brand').addEventListener('click', (e) => {
+  if (e.target.closest('.gh')) return;
+  ui.infoModal.classList.add('on');
+});
 ui.infoClose.addEventListener('click', () => ui.infoModal.classList.remove('on'));
 ui.infoModal.addEventListener('click', (e) => {
   if (e.target === ui.infoModal) ui.infoModal.classList.remove('on');
@@ -1561,7 +1600,8 @@ async function loadFromElement(imgEl, nameForInfo = '') {
 
     playEntryAnimation();
     ui.welcome.style.display = 'none';
-    document.body.classList.remove('landing');
+    // Keep body.landing class — the UI stays hidden while the image forms.
+    // It is removed in the render loop once the entry animation completes.
   } catch (err) {
     console.error('Pixel Space: load failed', err);
     ui.ovTitle.textContent = 'Image load failed';
@@ -1696,19 +1736,18 @@ const raycaster = new THREE.Raycaster();
 raycaster.params.Points.threshold = 1.5;
 const ndc = new THREE.Vector2();
 
+// Reusable scratch for the per-frame world→local ray transform (cursor pull).
+const _rayInvMat = new THREE.Matrix4();
+const _rayScratch = new THREE.Ray();
+
 function updatePointerFromEvent(e) {
   const rect = renderer.domElement.getBoundingClientRect();
-  ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  ndc.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
-  raycaster.setFromCamera(ndc, camera);
-  // World-space point on a plane through origin facing the camera
-  const planeN = camera.getWorldDirection(new THREE.Vector3()).negate();
-  const plane = new THREE.Plane(planeN, 0);
-  const out = new THREE.Vector3();
-  if (raycaster.ray.intersectPlane(plane, out)) {
-    state.pointerWorld.copy(out);
-    state.pointerActive = true;
-  }
+  const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+  state.pointerNDC.set(x, y);
+  state.pointerActive = true;
+  // Also refresh the picking raycaster for the immediate hover tooltip/click.
+  raycaster.setFromCamera(state.pointerNDC, camera);
 }
 
 function pickParticleIndex(clientX, clientY, thr = 1.5) {
@@ -1782,6 +1821,8 @@ function render() {
     if (eased >= 1) {
       state.entering = false;
       releaseCamera();
+      // Image has fully formed — now fade the UI in.
+      document.body.classList.remove('landing');
     }
   }
 
@@ -1796,12 +1837,24 @@ function render() {
     controls.update();
   }
 
-  // Slow automatic rotation (particle cloud + ambient)
+  // Slow automatic rotation of the particle cloud
   if (state.sceneRotation > 0) {
     field.group.rotation.y += state.sceneRotation * dt;
-    if (!ambientDisposed) {
-      ambient.points.rotation.y += state.sceneRotation * 0.5 * dt;
-    }
+  }
+
+  // Build the pointer ray in group-LOCAL space for this frame. Since the ray
+  // is rebuilt from the current camera + NDC, it tracks the live screen cursor
+  // even while orbiting or auto-rotating. The local transform then keeps the
+  // pull aligned with particles no matter how the field.group is rotated.
+  let rayOriginLocal = null, rayDirLocal = null;
+  if (state.pointerActive && state.cursorPull > 0) {
+    raycaster.setFromCamera(state.pointerNDC, camera);
+    field.group.updateWorldMatrix(true, false);
+    _rayInvMat.copy(field.group.matrixWorld).invert();
+    _rayScratch.copy(raycaster.ray).applyMatrix4(_rayInvMat);
+    _rayScratch.direction.normalize();  // applyMatrix4 may not preserve unit length
+    rayOriginLocal = _rayScratch.origin;
+    rayDirLocal = _rayScratch.direction;
   }
 
   field.update(dt, {
@@ -1809,7 +1862,8 @@ function render() {
     cursorPull: state.cursorPull,
     cursorRadius: 22,
     pointerActive: state.pointerActive,
-    pointerWorld: state.pointerWorld,
+    pointerRayOriginLocal: rayOriginLocal,
+    pointerRayDirLocal: rayDirLocal,
     time: performance.now() * 0.001,
     disableDynamics: false,
   });
@@ -2154,90 +2208,14 @@ async function exportVideo() {
 // ============================================================
 resetUIControlsToDefaults();
 
-// Landing state — hide panel/brand/hud until an image is loaded, and drift
-// a small cloud of ambient particles in the background.
+// Landing state — hide panel/brand/hud until an image is loaded. The welcome
+// screen is intentionally clean (no ambient particles), so the background is
+// just the body gradient.
 document.body.classList.add('landing');
 
-const ambient = (() => {
-  const N = 1400;
-  const geo = new THREE.BufferGeometry();
-  const pos = new Float32Array(N * 3);
-  const col = new Float32Array(N * 3);
-  const vel = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) {
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(2 * Math.random() - 1);
-    const r = 40 + Math.random() * 180;
-    pos[i*3]     = r * Math.sin(phi) * Math.cos(theta);
-    pos[i*3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-    pos[i*3 + 2] = r * Math.cos(phi);
-    vel[i*3]     = (Math.random() - 0.5) * 0.3;
-    vel[i*3 + 1] = (Math.random() - 0.5) * 0.3;
-    vel[i*3 + 2] = (Math.random() - 0.5) * 0.3;
-    const hue = Math.random();
-    const [rr, gg, bb] = (() => {
-      const h = hue * 6, x = 1 - Math.abs((h % 2) - 1);
-      if (h < 1) return [1, x, 0]; if (h < 2) return [x, 1, 0];
-      if (h < 3) return [0, 1, x]; if (h < 4) return [0, x, 1];
-      if (h < 5) return [x, 0, 1]; return [1, 0, x];
-    })();
-    col[i*3] = rr * 0.55 + 0.25; col[i*3 + 1] = gg * 0.55 + 0.25; col[i*3 + 2] = bb * 0.55 + 0.25;
-  }
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('aColor',   new THREE.BufferAttribute(col, 3));
-  geo.setAttribute('aAlpha',   new THREE.BufferAttribute(new Float32Array(N).fill(0.55), 1));
-  const mat = new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false,
-    uniforms: { uPointSize: { value: 2.2 } },
-    vertexShader: `
-      attribute vec3 aColor; attribute float aAlpha;
-      uniform float uPointSize;
-      varying vec3 vColor; varying float vAlpha;
-      void main(){
-        vColor = aColor; vAlpha = aAlpha;
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        gl_Position = projectionMatrix * mv;
-        gl_PointSize = uPointSize * (300.0 / max(1.0, -mv.z));
-      }`,
-    fragmentShader: `
-      precision highp float;
-      varying vec3 vColor; varying float vAlpha;
-      void main(){
-        vec2 c = gl_PointCoord - vec2(0.5);
-        float d = length(c);
-        float a = 1.0 - smoothstep(0.35, 0.5, d);
-        if (a <= 0.0) discard;
-        gl_FragColor = vec4(vColor, a * vAlpha);
-      }`,
-  });
-  const points = new THREE.Points(geo, mat);
-  scene.add(points);
-  return { points, geo, pos, vel, N, dispose() {
-    scene.remove(points); geo.dispose(); mat.dispose();
-  } };
-})();
-
-let ambientDisposed = false;
-function stepAmbient(dt) {
-  if (ambientDisposed) return;
-  const { pos, vel, N, geo } = ambient;
-  for (let i = 0; i < N; i++) {
-    pos[i*3]     += vel[i*3]     * dt * 8;
-    pos[i*3 + 1] += vel[i*3 + 1] * dt * 8;
-    pos[i*3 + 2] += vel[i*3 + 2] * dt * 8;
-    // Soft pull toward origin so they don't drift off
-    pos[i*3]     *= 0.9995;
-    pos[i*3 + 1] *= 0.9995;
-    pos[i*3 + 2] *= 0.9995;
-  }
-  geo.getAttribute('position').needsUpdate = true;
-}
-
-function hideAmbient() {
-  if (ambientDisposed) return;
-  ambient.dispose();
-  ambientDisposed = true;
-}
+// No-op stubs kept so callers elsewhere don't break.
+function stepAmbient(_dt) {}
+function hideAmbient() {}
 
 window.PixelSpace = { state, field, camera, controls };
 
