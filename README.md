@@ -1,8 +1,8 @@
 # Pixel Space
 
-A spatial exploration of digital images. Upload a photo and view it as a point cloud in three color spaces:
-
 ![Pixel Space](screenshot.png)
+
+A spatial exploration of digital images. Upload a photo and view it as a point cloud in three color spaces:
 
 - **Image** — pixels in screen-space with configurable depth (brightness, R, G, B, or edges)
 - **RGB Linear** — particles positioned by their linear RGB values (true sRGB → linear conversion)
