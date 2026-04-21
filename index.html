@@ -1,0 +1,2248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pixel Space — A Spatial Exploration of Digital Images</title>
+<style>
+  :root {
+    --bg0: #07080a;
+    --bg1: #0d1014;
+    --panel: rgba(18, 20, 26, 0.55);
+    --panel-strong: rgba(22, 25, 31, 0.78);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --text: #e8eaef;
+    --muted: #8b909b;
+    --muted-2: #676c76;
+    --accent: #8ad8ff;
+    --accent-2: #b39dff;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: radial-gradient(ellipse at 20% 0%, #111828 0%, var(--bg0) 65%);
+    color: var(--text);
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "SF Pro Text", Roboto, sans-serif;
+    font-size: 13px;
+    overflow: hidden;
+    letter-spacing: 0.1px;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  ::selection { background: rgba(138, 216, 255, 0.3); }
+
+  #canvas-root { position: fixed; inset: 0; }
+  #canvas-root canvas { display: block; }
+
+  #brand {
+    position: fixed; top: 18px; left: 20px; z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border-radius: 12px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+  }
+  #brand .logo {
+    width: 22px; height: 22px; border-radius: 5px;
+    background: conic-gradient(from 0deg, #ff6b6b, #ffd166, #7ce0a9, #8ad8ff, #b39dff, #ff6b6b);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+  }
+  #brand .title { font-size: 13px; font-weight: 600; }
+  #brand .sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+  #hud {
+    position: fixed; bottom: 16px; left: 20px; z-index: 10;
+    display: flex; align-items: center; gap: 14px;
+    padding: 8px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border-radius: 10px;
+    color: var(--muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  #hud .v { color: var(--text); font-weight: 500; }
+  #hud .sep { width: 1px; height: 12px; background: var(--border-strong); }
+
+  #panel {
+    position: fixed; top: 18px; right: 20px; bottom: 18px; width: 320px; z-index: 10;
+    display: flex; flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border-radius: 14px;
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+  }
+  #panel .scroll { flex: 1; overflow-y: auto; padding: 14px; }
+  #panel .scroll::-webkit-scrollbar { width: 8px; }
+  #panel .scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+  #panel .scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+
+  .section { margin-bottom: 18px; }
+  .section:last-child { margin-bottom: 0; }
+  .section > h3 {
+    margin: 0 0 10px; font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section > h3::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  .row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+  .row .label { flex: 1; color: var(--text); font-size: 12px; }
+  .row .val { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+  .row input[type="range"] { flex: 1; }
+  .row.full { flex-direction: column; align-items: stretch; gap: 6px; }
+  .row.full .top { display: flex; align-items: center; gap: 10px; }
+  .row.full .top .label { font-size: 11.5px; color: var(--text); letter-spacing: 0.2px; }
+  .row.full .top .val { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 22px; background: transparent; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track { height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; }
+  input[type="range"]::-moz-range-track           { height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--text); border: 2px solid rgba(0,0,0,0.2);
+    margin-top: -5.5px; box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+    transition: transform 0.1s ease;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--text); border: 2px solid rgba(0,0,0,0.2);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  }
+
+  .seg {
+    display: inline-flex; gap: 2px; padding: 2px;
+    background: rgba(0,0,0,0.25); border: 1px solid var(--border);
+    border-radius: 8px; width: 100%;
+  }
+  .seg button {
+    flex: 1; background: transparent; color: var(--muted);
+    border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    font-size: 11px; letter-spacing: 0.2px; transition: all 0.15s ease;
+  }
+  .seg button:hover { color: var(--text); }
+  .seg button.on { background: rgba(255,255,255,0.08); color: var(--text); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 9px 12px; width: 100%;
+    background: rgba(255,255,255,0.04); color: var(--text);
+    border: 1px solid var(--border-strong); border-radius: 9px;
+    cursor: pointer; font-size: 12px; font-weight: 500;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.22); }
+  .btn.accent {
+    background: linear-gradient(135deg, rgba(138,216,255,0.18), rgba(179,157,255,0.14));
+    border-color: rgba(138,216,255,0.35);
+  }
+  .btn.accent:hover { background: linear-gradient(135deg, rgba(138,216,255,0.28), rgba(179,157,255,0.22)); }
+  .btn.ghost { background: transparent; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  input[type="file"] { display: none; }
+
+  .palette { display: flex; flex-wrap: wrap; gap: 6px; }
+  .swatch {
+    display: flex; flex-direction: column; align-items: stretch;
+    width: calc(20% - 5px);
+    border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--border);
+    font-size: 9.5px; color: rgba(255,255,255,0.85);
+    font-variant-numeric: tabular-nums;
+    transition: transform 0.15s ease;
+    cursor: pointer;
+  }
+  .swatch:hover { transform: translateY(-1px); }
+  .swatch .chip { height: 28px; }
+  .swatch .meta { padding: 3px 4px; background: rgba(0,0,0,0.35); text-align: center; letter-spacing: 0.3px; }
+
+  #tip {
+    position: fixed; z-index: 20; pointer-events: none; display: none;
+    padding: 6px 9px; transform: translate(12px, 12px);
+    background: rgba(14,16,20,0.9); border: 1px solid var(--border-strong);
+    border-radius: 8px; font-size: 11px; color: var(--text);
+    font-variant-numeric: tabular-nums;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  #tip .sw {
+    display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+    margin-right: 6px; vertical-align: middle;
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+
+  #welcome {
+    position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(14,18,30,0.35), rgba(0,0,0,0.82));
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: welcomeFadeIn 0.8s ease-out;
+  }
+  @keyframes welcomeFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  #welcome .card {
+    width: 520px; max-width: calc(100vw - 40px);
+    padding: 42px 36px;
+    background: var(--panel-strong);
+    border: 1px solid var(--border-strong);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border-radius: 18px;
+    box-shadow: 0 30px 120px rgba(0,0,0,0.65);
+    text-align: center;
+  }
+  #welcome h1 {
+    margin: 0 0 10px; font-size: 32px; font-weight: 600;
+    letter-spacing: -0.4px;
+    background: linear-gradient(135deg, #ffffff 0%, #b39dff 60%, #8ad8ff 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  #welcome .subtitle { margin: 0 0 30px; color: var(--muted); font-size: 14px; letter-spacing: 0.2px; }
+  #welcome .row { justify-content: center; margin: 0; gap: 12px; }
+  #welcome .btn { width: auto; padding: 11px 22px; font-size: 13px; }
+
+  /* Info modal */
+  #info-modal {
+    position: fixed; inset: 0; z-index: 50; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    opacity: 0; transition: opacity 0.3s ease;
+  }
+  #info-modal.on { display: flex; opacity: 1; }
+  #info-modal .card {
+    width: 440px; max-width: calc(100vw - 40px);
+    padding: 32px 32px 28px;
+    background: var(--panel-strong);
+    border: 1px solid var(--border-strong);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border-radius: 16px;
+    box-shadow: 0 30px 100px rgba(0,0,0,0.6);
+    text-align: center;
+    transform: scale(0.95); transition: transform 0.3s ease;
+  }
+  #info-modal.on .card { transform: scale(1); }
+  #info-modal h2 {
+    margin: 0 0 12px; font-size: 22px; font-weight: 600; letter-spacing: -0.2px;
+    background: linear-gradient(135deg, #ffffff 0%, #b39dff 60%, #8ad8ff 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  #info-modal p { margin: 0 0 10px; color: var(--text); font-size: 13px; line-height: 1.6; }
+  #info-modal .credit { color: var(--muted); font-size: 12px; margin-top: 18px; letter-spacing: 0.3px; }
+  #info-modal .close {
+    margin-top: 22px; padding: 8px 20px;
+  }
+
+  #brand .title { cursor: pointer; transition: color 0.15s ease; }
+  #brand .title:hover { color: var(--accent); }
+
+  /* Hide main UI before image loaded */
+  body.landing #panel,
+  body.landing #hud,
+  body.landing #brand { display: none !important; }
+
+  #overlay {
+    position: fixed; inset: 0; z-index: 40; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  #overlay.on { display: flex; }
+  #overlay .card {
+    padding: 20px 24px; min-width: 300px;
+    background: var(--panel-strong); border: 1px solid var(--border-strong);
+    border-radius: 14px; text-align: center;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  #overlay .title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  #overlay .sub { color: var(--muted); font-size: 11px; margin-bottom: 14px; }
+  #overlay .bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  #overlay .fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width 0.1s linear;
+  }
+
+  .hint { font-size: 10.5px; color: var(--muted-2); margin-top: 4px; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<div id="canvas-root"></div>
+
+<div id="brand">
+  <div class="logo"></div>
+  <div>
+    <div class="title">Pixel Space</div>
+    <div class="sub">A Spatial Exploration of Digital Images</div>
+  </div>
+</div>
+
+<div id="hud">
+  <div><span class="v" id="hud-dim">—</span> px</div>
+  <div class="sep"></div>
+  <div><span class="v" id="hud-count">0</span> particles</div>
+  <div class="sep"></div>
+  <div><span class="v" id="hud-fps">0</span> fps</div>
+  <div class="sep"></div>
+  <div id="hud-mode">image</div>
+</div>
+
+<div id="panel">
+  <div class="scroll">
+
+    <div class="section">
+      <h3>Source</h3>
+      <div class="grid2">
+        <label for="file" class="btn accent">Load image</label>
+        <button class="btn ghost" id="btn-sample">Sample</button>
+      </div>
+      <input id="file" type="file" accept="image/*" />
+      <div class="hint" id="src-info">No image loaded — drop a file anywhere on the page, or use Load image.</div>
+    </div>
+
+    <div class="section">
+      <h3>View</h3>
+      <div class="row"><div class="label">Space</div></div>
+      <div class="seg" id="seg-mode">
+        <button data-v="image" class="on">Image</button>
+        <button data-v="rgb">RGB Linear</button>
+        <button data-v="hsv">HSV</button>
+      </div>
+
+      <div id="depth-controls">
+        <div class="row" style="margin-top:12px"><div class="label">Depth source</div></div>
+        <div class="seg" id="seg-depth">
+          <button data-v="brightness" class="on">Bright</button>
+          <button data-v="red">R</button>
+          <button data-v="green">G</button>
+          <button data-v="blue">B</button>
+          <button data-v="edges">Edges</button>
+        </div>
+
+        <div class="row full" style="margin-top:10px">
+          <div class="top"><div class="label">Depth amount</div><div class="val" id="val-depth">30</div></div>
+          <input type="range" id="sl-depth" min="0" max="120" step="1" value="30" />
+        </div>
+      </div>
+
+      <div class="row full">
+        <div class="top"><div class="label">Voxel size</div><div class="val" id="val-size">4.0</div></div>
+        <input type="range" id="sl-size" min="1" max="12" step="0.1" value="4" />
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Motion</h3>
+      <div class="row full">
+        <div class="top"><div class="label">Idle movement</div><div class="val" id="val-idle">0.15</div></div>
+        <input type="range" id="sl-idle" min="0" max="4" step="0.05" value="0.15" />
+      </div>
+      <div class="row full">
+        <div class="top"><div class="label">Cursor pull</div><div class="val" id="val-pull">0.15</div></div>
+        <input type="range" id="sl-pull" min="0" max="2" step="0.01" value="0.15" />
+      </div>
+      <div class="row full">
+        <div class="top"><div class="label">Auto rotation</div><div class="val" id="val-rot">0.05</div></div>
+        <input type="range" id="sl-rot" min="0" max="0.5" step="0.005" value="0.05" />
+      </div>
+      <div class="hint">Set auto rotation to 0 to disable. Cursor pull gently attracts nearby particles toward the mouse.</div>
+    </div>
+
+    <div class="section">
+      <h3>Analysis</h3>
+      <div class="palette" id="palette"></div>
+      <div class="hint">Dominant colors update on load and when adjustments change. Click a swatch to isolate that color group.</div>
+    </div>
+
+    <div class="section">
+      <h3>Adjustments</h3>
+      <div class="row full">
+        <div class="top"><div class="label">Hue</div><div class="val" id="val-hue">0°</div></div>
+        <input type="range" id="sl-hue" min="-180" max="180" step="1" value="0" />
+      </div>
+      <div class="row full">
+        <div class="top"><div class="label">Brightness</div><div class="val" id="val-bright">0</div></div>
+        <input type="range" id="sl-bright" min="-100" max="100" step="1" value="0" />
+      </div>
+      <div class="row full">
+        <div class="top"><div class="label">Contrast</div><div class="val" id="val-contrast">0</div></div>
+        <input type="range" id="sl-contrast" min="-100" max="100" step="1" value="0" />
+      </div>
+      <div class="row full">
+        <div class="top"><div class="label">Palette</div><div class="val" id="val-palette">256</div></div>
+        <input type="range" id="sl-palette" min="2" max="256" step="1" value="256" />
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Resolution</h3>
+      <div class="row full">
+        <div class="top"><div class="label">Sample size</div><div class="val" id="val-res">240</div></div>
+        <input type="range" id="sl-res" min="32" max="600" step="2" value="240" />
+      </div>
+      <div class="hint">Larger = more particles and finer detail. 240–500 is smooth; above 500 may drop below 60 fps on integrated GPUs.</div>
+    </div>
+
+    <div class="section">
+      <h3>Actions</h3>
+      <div class="grid2">
+        <button class="btn" id="btn-reset">Reset</button>
+        <button class="btn" id="btn-clear-sel">Clear selection</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Export</h3>
+      <div class="grid2">
+        <button class="btn" id="btn-png">PNG</button>
+        <button class="btn" id="btn-video">Video</button>
+      </div>
+      <div class="hint">Video captures the black → image → RGB Linear → HSV → image cycle at 1280×1280 / 60 fps. Saved as .mov (H.264) when supported.</div>
+    </div>
+
+  </div>
+</div>
+
+<div id="tip"><span class="sw" id="tip-sw"></span><span id="tip-text">—</span></div>
+
+<div id="welcome">
+  <div class="card">
+    <h1>Pixel Space</h1>
+    <p class="subtitle">A Spatial Exploration of Digital Images</p>
+    <div class="row">
+      <label class="btn accent" for="file">Upload Image</label>
+      <button class="btn" id="welcome-sample">Load Sample</button>
+    </div>
+  </div>
+</div>
+
+<div id="info-modal">
+  <div class="card">
+    <h2>Pixel Space</h2>
+    <p>An interactive system for exploring how digital images are constructed from color data.</p>
+    <p class="credit">Made by Saim Alshafi</p>
+    <button class="btn close" id="info-close">Close</button>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card">
+    <div class="title" id="ov-title">Working…</div>
+    <div class="sub" id="ov-sub">Please wait</div>
+    <div class="bar"><div class="fill" id="ov-fill"></div></div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ======================================================================
+   Pixel Space — modular architecture (kept in a single file)
+
+     1. ImageProcessor   — load / resample / hue-brightness-contrast /
+                            k-means palette quantize / Sobel edges /
+                            dominant-color histogram / RGB→HSV conversion
+     2. ParticleField    — Three.js Points; per-particle image/RGB/HSV
+                            targets, mode transitions, light physics
+                            (spring + subtle idle + subtle cursor pull),
+                            entry-formation animation, alpha-only selection
+     3. CameraController — eased framing transitions per mode
+     4. Interaction      — click-to-select similar color, hover tooltip,
+                            pointer world-space tracking for cursor pull
+     5. UI               — glassmorphic panel, slider/segment bindings
+     6. ExportManager    — PNG snapshot + WebM video via MediaRecorder
+                            (canvas.captureStream + VP9, 12 Mbps)
+     7. App              — defaults, state, render loop
+   ====================================================================== */
+
+// ============================================================
+// 0. Defaults (single source of truth for reset)
+// ============================================================
+const DEFAULTS = {
+  mode: 'image',          // 'image' | 'rgb' | 'hsv'
+  depthMode: 'brightness',
+  depthAmount: 30,
+  voxelSize: 4.0,
+  idleMotion: 0.15,       // baseline idle drift amplitude (world units)
+  cursorPull: 0.15,       // subtle magnetic attraction strength
+  sceneRotation: 0.05,    // radians/second auto-rotation around Y
+  hue: 0,
+  brightness: 0,
+  contrast: 0,
+  paletteColors: 256,     // 256 = no quantization
+  resolution: 240,        // long-edge of sampled image
+};
+
+// ============================================================
+// 1. ImageProcessor
+// ============================================================
+const ImageProcessor = {
+  async loadElement(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      if (src instanceof File) img.src = URL.createObjectURL(src);
+      else img.src = src;
+    });
+  },
+
+  resample(imgEl, maxDim) {
+    const scale = Math.min(1, maxDim / Math.max(imgEl.width, imgEl.height));
+    const w = Math.max(2, Math.round(imgEl.width * scale));
+    const h = Math.max(2, Math.round(imgEl.height * scale));
+    const cvs = document.createElement('canvas');
+    cvs.width = w; cvs.height = h;
+    const ctx = cvs.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(imgEl, 0, 0, w, h);
+    return ctx.getImageData(0, 0, w, h);
+  },
+
+  applyAdjustments(src, { hue, brightness, contrast }) {
+    const { width: w, height: h, data } = src;
+    const out = new ImageData(new Uint8ClampedArray(data), w, h);
+    const d = out.data;
+    const hueRad = (hue * Math.PI) / 180;
+    // Luminance-preserving hue rotation matrix (Beesbuzz).
+    const U = Math.cos(hueRad), W = Math.sin(hueRad);
+    const m = [
+      0.299 + 0.701 * U + 0.168 * W,  0.587 - 0.587 * U + 0.330 * W,  0.114 - 0.114 * U - 0.497 * W,
+      0.299 - 0.299 * U - 0.328 * W,  0.587 + 0.413 * U + 0.035 * W,  0.114 - 0.114 * U + 0.292 * W,
+      0.299 - 0.300 * U + 1.250 * W,  0.587 - 0.588 * U - 1.050 * W,  0.114 + 0.886 * U - 0.203 * W,
+    ];
+    const c = contrast;
+    const cf = (259 * (c + 255)) / (255 * (259 - c));
+    const b = brightness * 2.55;
+
+    for (let i = 0; i < d.length; i += 4) {
+      let r = d[i], g = d[i + 1], bl = d[i + 2];
+      const rr = m[0] * r + m[1] * g + m[2] * bl;
+      const gg = m[3] * r + m[4] * g + m[5] * bl;
+      const bb = m[6] * r + m[7] * g + m[8] * bl;
+      r  = cf * (rr  - 128) + 128 + b;
+      g  = cf * (gg  - 128) + 128 + b;
+      bl = cf * (bb  - 128) + 128 + b;
+      d[i]     = r  < 0 ? 0 : r  > 255 ? 255 : r;
+      d[i + 1] = g  < 0 ? 0 : g  > 255 ? 255 : g;
+      d[i + 2] = bl < 0 ? 0 : bl > 255 ? 255 : bl;
+    }
+    return out;
+  },
+
+  quantize(src, k) {
+    if (k >= 256) return { image: src, palette: null };
+    const { width: w, height: h, data } = src;
+    const total = w * h;
+    const sampleCount = Math.min(total, 1500);
+    const samples = new Uint8Array(sampleCount * 3);
+    for (let i = 0; i < sampleCount; i++) {
+      const idx = Math.floor(Math.random() * total);
+      samples[i * 3]     = data[idx * 4];
+      samples[i * 3 + 1] = data[idx * 4 + 1];
+      samples[i * 3 + 2] = data[idx * 4 + 2];
+    }
+    const centers = new Float32Array(k * 3);
+    for (let i = 0; i < k; i++) {
+      const idx = Math.floor(Math.random() * sampleCount);
+      centers[i * 3]     = samples[idx * 3];
+      centers[i * 3 + 1] = samples[idx * 3 + 1];
+      centers[i * 3 + 2] = samples[idx * 3 + 2];
+    }
+    const assign = new Int32Array(sampleCount);
+    const accum = new Float32Array(k * 3);
+    const cnt = new Uint32Array(k);
+    for (let it = 0; it < 6; it++) {
+      for (let i = 0; i < sampleCount; i++) {
+        const r = samples[i * 3], g = samples[i * 3 + 1], b = samples[i * 3 + 2];
+        let best = 0, bestD = Infinity;
+        for (let c = 0; c < k; c++) {
+          const dr = r - centers[c * 3];
+          const dg = g - centers[c * 3 + 1];
+          const db = b - centers[c * 3 + 2];
+          const D = dr * dr + dg * dg + db * db;
+          if (D < bestD) { bestD = D; best = c; }
+        }
+        assign[i] = best;
+      }
+      accum.fill(0); cnt.fill(0);
+      for (let i = 0; i < sampleCount; i++) {
+        const a = assign[i];
+        accum[a * 3]     += samples[i * 3];
+        accum[a * 3 + 1] += samples[i * 3 + 1];
+        accum[a * 3 + 2] += samples[i * 3 + 2];
+        cnt[a]++;
+      }
+      for (let c = 0; c < k; c++) {
+        if (cnt[c] > 0) {
+          centers[c * 3]     = accum[c * 3]     / cnt[c];
+          centers[c * 3 + 1] = accum[c * 3 + 1] / cnt[c];
+          centers[c * 3 + 2] = accum[c * 3 + 2] / cnt[c];
+        }
+      }
+    }
+    const out = new ImageData(new Uint8ClampedArray(data), w, h);
+    const od = out.data;
+    for (let p = 0; p < total; p++) {
+      const r = data[p * 4], g = data[p * 4 + 1], b = data[p * 4 + 2];
+      let best = 0, bestD = Infinity;
+      for (let c = 0; c < k; c++) {
+        const dr = r - centers[c * 3];
+        const dg = g - centers[c * 3 + 1];
+        const db = b - centers[c * 3 + 2];
+        const D = dr * dr + dg * dg + db * db;
+        if (D < bestD) { bestD = D; best = c; }
+      }
+      od[p * 4]     = centers[best * 3];
+      od[p * 4 + 1] = centers[best * 3 + 1];
+      od[p * 4 + 2] = centers[best * 3 + 2];
+    }
+    return { image: out, palette: centers };
+  },
+
+  dominantColors(src, k = 10) {
+    const { data } = src;
+    const total = data.length / 4;
+    const BINS = 5;
+    const bucket = new Uint32Array(BINS * BINS * BINS);
+    const accR = new Float32Array(BINS * BINS * BINS);
+    const accG = new Float32Array(BINS * BINS * BINS);
+    const accB = new Float32Array(BINS * BINS * BINS);
+    for (let i = 0; i < total; i++) {
+      const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+      const br = Math.min(BINS - 1, (r * BINS) >> 8);
+      const bg = Math.min(BINS - 1, (g * BINS) >> 8);
+      const bb = Math.min(BINS - 1, (b * BINS) >> 8);
+      const idx = (br * BINS + bg) * BINS + bb;
+      bucket[idx]++;
+      accR[idx] += r; accG[idx] += g; accB[idx] += b;
+    }
+    const idxs = [];
+    for (let i = 0; i < bucket.length; i++) if (bucket[i] > 0) idxs.push(i);
+    idxs.sort((a, b) => bucket[b] - bucket[a]);
+    const out = [];
+    for (let i = 0; i < Math.min(k, idxs.length); i++) {
+      const j = idxs[i];
+      const n = bucket[j];
+      out.push({
+        r: Math.round(accR[j] / n),
+        g: Math.round(accG[j] / n),
+        b: Math.round(accB[j] / n),
+        pct: n / total,
+      });
+    }
+    return out;
+  },
+
+  sobel(src) {
+    const { width: w, height: h, data } = src;
+    const lum = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+      lum[i] = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    }
+    const out = new Float32Array(w * h);
+    let max = 0;
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        const gx =
+          -lum[i - w - 1] - 2 * lum[i - 1] - lum[i + w - 1] +
+           lum[i - w + 1] + 2 * lum[i + 1] + lum[i + w + 1];
+        const gy =
+          -lum[i - w - 1] - 2 * lum[i - w] - lum[i - w + 1] +
+           lum[i + w - 1] + 2 * lum[i + w] + lum[i + w + 1];
+        const m = Math.sqrt(gx * gx + gy * gy);
+        out[i] = m;
+        if (m > max) max = m;
+      }
+    }
+    if (max > 0) for (let i = 0; i < out.length; i++) out[i] /= max;
+    return out;
+  },
+
+  // sRGB (0..255) → linear RGB (0..1). Standard IEC 61966-2-1 transfer function.
+  srgbToLinear(c) {
+    c = c / 255;
+    return c <= 0.04045
+      ? c / 12.92
+      : Math.pow((c + 0.055) / 1.055, 2.4);
+  },
+
+  // RGB → HSV. Inputs are 0..255; outputs h,s,v in 0..1.
+  rgbToHsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    const d = mx - mn;
+    const v = mx;
+    const s = mx === 0 ? 0 : d / mx;
+    let h = 0;
+    if (d !== 0) {
+      if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (mx === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+    }
+    return [h, s, v];
+  },
+};
+
+// Synthetic sample so users can try immediately.
+function generateSample(w = 128, h = 128) {
+  const cvs = document.createElement('canvas');
+  cvs.width = w; cvs.height = h;
+  const ctx = cvs.getContext('2d');
+  const img = ctx.createImageData(w, h);
+  function hsv(h, s, v) {
+    const c = v * s, hp = h * 6, x = c * (1 - Math.abs((hp % 2) - 1));
+    let r = 0, g = 0, b = 0;
+    if (hp < 1) { r = c; g = x; }
+    else if (hp < 2) { r = x; g = c; }
+    else if (hp < 3) { g = c; b = x; }
+    else if (hp < 4) { g = x; b = c; }
+    else if (hp < 5) { r = x; b = c; }
+    else { r = c; b = x; }
+    const m = v - c;
+    return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const u = x / w - 0.5, v = y / h - 0.5;
+      const r = Math.sqrt(u * u + v * v);
+      const a = Math.atan2(v, u);
+      const hue = (a / (Math.PI * 2) + 0.5 + r * 0.7) % 1;
+      const sat = Math.max(0, 0.8 - r * 0.5);
+      const val = Math.max(0, Math.min(1, 0.95 - r * 0.9 + 0.15 * Math.sin(8 * a + r * 16)));
+      const [R, G, B] = hsv(hue, sat, val);
+      const i = (y * w + x) * 4;
+      img.data[i] = R; img.data[i + 1] = G; img.data[i + 2] = B; img.data[i + 3] = 255;
+    }
+  }
+  return new Promise(resolve => {
+    ctx.putImageData(img, 0, 0);
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.src = cvs.toDataURL('image/png');
+  });
+}
+
+// ============================================================
+// 2. ParticleField — points + light physics + mode transitions
+// ============================================================
+class ParticleField {
+  constructor(scene) {
+    this.group = new THREE.Group();
+    scene.add(this.group);
+    this.points = null;
+    this.geometry = null;
+    this.material = null;
+
+    this.count = 0;
+    this.imgW = 0; this.imgH = 0;
+    this.worldSize = 0;   // characteristic scale = max(imgW, imgH)
+
+    // Per-particle static data
+    this.imagePos = null;
+    this.rgbPos = null;
+    this.hsvPos = null;
+    this.scatterPos = null;
+    this.entryDelay = null;
+    this.color = null;
+    this.edge = null;
+    this.lum = null;
+    this.selected = null;
+
+    // Per-particle dynamic state
+    this.curPos = null;     // underlies geometry 'position' attribute
+    this.vel = null;
+
+    // Mode transition
+    this.targetMode = 'image';
+    this.transitionFromPos = null;
+    this.transitionStart = 0;
+    this.transitionDur = 1.2;
+    this.inTransition = false;
+
+    // Entry animation
+    this.entryProgress = 1;
+    this.entryDuration = 1.8;
+
+    this.hasSelection = false;
+  }
+
+  dispose() {
+    if (this.points) {
+      this.group.remove(this.points);
+      this.geometry.dispose();
+      this.material.dispose();
+      this.points = null;
+    }
+  }
+
+  build(processed) {
+    this.dispose();
+    // Reset any accumulated group rotation from prior state (e.g. landing scene)
+    this.group.rotation.set(0, 0, 0);
+    const { width: w, height: h } = processed;
+    this.imgW = w; this.imgH = h;
+    const count = w * h;
+    this.count = count;
+    const size = Math.max(w, h);
+    this.worldSize = size;
+
+    this.imagePos        = new Float32Array(count * 3);
+    this.rgbPos          = new Float32Array(count * 3);
+    this.hsvPos          = new Float32Array(count * 3);
+    this.scatterPos      = new Float32Array(count * 3);
+    this.transitionFromPos = new Float32Array(count * 3);
+    this.entryDelay      = new Float32Array(count);
+    this.color           = new Uint8Array(count * 3);
+    this.edge            = new Float32Array(count);
+    this.lum             = new Float32Array(count);
+    this.selected        = new Uint8Array(count);
+    this.vel             = new Float32Array(count * 3);
+
+    const edges = ImageProcessor.sobel(processed);
+    const halfW = (w - 1) * 0.5, halfH = (h - 1) * 0.5;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        const R = processed.data[i * 4];
+        const G = processed.data[i * 4 + 1];
+        const B = processed.data[i * 4 + 2];
+        this.color[i * 3] = R; this.color[i * 3 + 1] = G; this.color[i * 3 + 2] = B;
+        this.edge[i] = edges[i];
+        this.lum[i] = (0.2126 * R + 0.7152 * G + 0.0722 * B) / 255;
+
+        this.imagePos[i * 3]     = x - halfW;
+        this.imagePos[i * 3 + 1] = -(y - halfH);
+        this.imagePos[i * 3 + 2] = 0;
+
+        // True linear RGB — sRGB 0..255 converted via the sRGB transfer function
+        const rL = ImageProcessor.srgbToLinear(R);
+        const gL = ImageProcessor.srgbToLinear(G);
+        const bL = ImageProcessor.srgbToLinear(B);
+        this.rgbPos[i * 3]     = (rL - 0.5) * size;
+        this.rgbPos[i * 3 + 1] = (gL - 0.5) * size;
+        this.rgbPos[i * 3 + 2] = (bL - 0.5) * size;
+
+        // Cylindrical HSV — hue = angle, saturation = radius, value = height
+        const [H, S, V] = ImageProcessor.rgbToHsv(R, G, B);
+        const angle = H * 2 * Math.PI;
+        this.hsvPos[i * 3]     = S * Math.cos(angle) * size * 0.5;  // X
+        this.hsvPos[i * 3 + 1] = (V - 0.5) * size;                  // Y (height)
+        this.hsvPos[i * 3 + 2] = S * Math.sin(angle) * size * 0.5;  // Z
+
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const rad = size * 1.6;
+        this.scatterPos[i * 3]     = rad * Math.sin(phi) * Math.cos(theta);
+        this.scatterPos[i * 3 + 1] = rad * Math.sin(phi) * Math.sin(theta);
+        this.scatterPos[i * 3 + 2] = rad * Math.cos(phi);
+
+        const wave = (x / w + y / h) * 0.5;
+        this.entryDelay[i] = Math.min(0.85, wave * 0.85 + Math.random() * 0.08);
+      }
+    }
+
+    // Geometry: position starts at scatter (entry animation writes to it)
+    this.geometry = new THREE.BufferGeometry();
+    this.curPos = new Float32Array(count * 3);
+    this.curPos.set(this.scatterPos);
+    this.geometry.setAttribute('position', new THREE.BufferAttribute(this.curPos, 3));
+    this.geometry.setAttribute('aColor',   new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    this.geometry.setAttribute('aAlpha',   new THREE.BufferAttribute(new Float32Array(count).fill(1), 1));
+    this._syncColorAttr();
+
+    // Shader: square voxel points. Selection is alpha-only — no ring / outline.
+    this.material = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.NormalBlending,
+      uniforms: { uPointSize: { value: DEFAULTS.voxelSize } },
+      vertexShader: `
+        attribute vec3  aColor;
+        attribute float aAlpha;
+        uniform float uPointSize;
+        varying vec3  vColor;
+        varying float vAlpha;
+        void main(){
+          vColor = aColor;
+          vAlpha = aAlpha;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * mv;
+          gl_PointSize = uPointSize * (340.0 / max(1.0, -mv.z));
+        }
+      `,
+      fragmentShader: `
+        precision highp float;
+        varying vec3 vColor; varying float vAlpha;
+        void main(){
+          vec2 c = gl_PointCoord - vec2(0.5);
+          float e = max(abs(c.x), abs(c.y));
+          float a = 1.0 - smoothstep(0.46, 0.5, e);
+          if (a <= 0.0) discard;
+          gl_FragColor = vec4(vColor, a * vAlpha);
+        }
+      `,
+    });
+
+    this.points = new THREE.Points(this.geometry, this.material);
+    this.group.add(this.points);
+
+    // Reset transition + entry bookkeeping
+    this.targetMode = 'image';
+    this.inTransition = false;
+    this.entryProgress = 0;
+    this.hasSelection = false;
+    this.vel.fill(0);
+    // Invalidate the alpha-fade target buffer — its length is tied to count
+    // and must be reallocated for the new particle count on next use.
+    this._targetAlpha = null;
+    this._alphaFading = false;
+  }
+
+  _syncColorAttr() {
+    const a = this.geometry.getAttribute('aColor');
+    for (let i = 0; i < this.count; i++) {
+      a.array[i * 3]     = this.color[i * 3]     / 255;
+      a.array[i * 3 + 1] = this.color[i * 3 + 1] / 255;
+      a.array[i * 3 + 2] = this.color[i * 3 + 2] / 255;
+    }
+    a.needsUpdate = true;
+  }
+
+  /** Update per-particle colors + derived data without rebuilding geometry.
+   *  Also refreshes rgbPos and hsvPos since both depend on color. */
+  updateColorsFrom(processed) {
+    if (!this.count) return false;
+    if (processed.width !== this.imgW || processed.height !== this.imgH) return false;
+    const edges = ImageProcessor.sobel(processed);
+    const size = this.worldSize;
+    for (let i = 0; i < this.count; i++) {
+      const R = processed.data[i * 4];
+      const G = processed.data[i * 4 + 1];
+      const B = processed.data[i * 4 + 2];
+      this.color[i * 3] = R; this.color[i * 3 + 1] = G; this.color[i * 3 + 2] = B;
+      this.edge[i] = edges[i];
+      this.lum[i] = (0.2126 * R + 0.7152 * G + 0.0722 * B) / 255;
+      const rL = ImageProcessor.srgbToLinear(R);
+      const gL = ImageProcessor.srgbToLinear(G);
+      const bL = ImageProcessor.srgbToLinear(B);
+      this.rgbPos[i * 3]     = (rL - 0.5) * size;
+      this.rgbPos[i * 3 + 1] = (gL - 0.5) * size;
+      this.rgbPos[i * 3 + 2] = (bL - 0.5) * size;
+      const [H, S, V] = ImageProcessor.rgbToHsv(R, G, B);
+      const angle = H * 2 * Math.PI;
+      this.hsvPos[i * 3]     = S * Math.cos(angle) * size * 0.5;
+      this.hsvPos[i * 3 + 1] = (V - 0.5) * size;
+      this.hsvPos[i * 3 + 2] = S * Math.sin(angle) * size * 0.5;
+    }
+    this._syncColorAttr();
+    return true;
+  }
+
+  applyDepthMode(mode, amplitude) {
+    if (!this.count) return;
+    const { color, edge, lum, imagePos, count } = this;
+    for (let i = 0; i < count; i++) {
+      let v;
+      switch (mode) {
+        case 'red':   v = color[i * 3] / 255 - 0.5; break;
+        case 'green': v = color[i * 3 + 1] / 255 - 0.5; break;
+        case 'blue':  v = color[i * 3 + 2] / 255 - 0.5; break;
+        case 'edges': v = edge[i]; break;
+        case 'brightness':
+        default:      v = lum[i] - 0.5; break;
+      }
+      imagePos[i * 3 + 2] = v * amplitude;
+    }
+  }
+
+  setVoxelSize(v) { if (this.material) this.material.uniforms.uPointSize.value = v; }
+
+  modeArrayFor(mode) {
+    if (mode === 'rgb') return this.rgbPos;
+    if (mode === 'hsv') return this.hsvPos;
+    return this.imagePos;
+  }
+
+  /** Begin a smooth transition to `mode` over `dur` seconds. */
+  setMode(mode, dur = 1.2) {
+    if (mode === this.targetMode && !this.inTransition) return;
+    this.transitionFromPos.set(this.curPos);
+    this.targetMode = mode;
+    this.transitionStart = performance.now();
+    this.transitionDur = dur;
+    this.inTransition = true;
+    this.vel.fill(0);  // avoid residual velocity fighting the transition
+  }
+
+  setEntryProgress(t) { this.entryProgress = t; }
+
+  /** Select particles similar to the target color.
+   *  Uses HSV-space similarity with separate tolerances for hue, saturation, value.
+   *  For low-saturation (grayscale) targets, falls back to luminance distance so
+   *  hue noise doesn't pull in unrelated colors. */
+  selectByColor(R, G, B) {
+    this.hasSelection = false;
+    const [tH, tS, tV] = ImageProcessor.rgbToHsv(R, G, B);
+    const grayTarget = tS < 0.15;
+    // Tolerances tuned so a blue selection never pulls in greens, reds, etc.
+    const hueTol = 0.07;   // ±25° on the color wheel
+    const satTol = 0.30;
+    const valTol = 0.35;
+    const grayValTol = 0.18;
+    for (let i = 0; i < this.count; i++) {
+      const r = this.color[i * 3], g = this.color[i * 3 + 1], b = this.color[i * 3 + 2];
+      let sel = 0;
+      const [h, s, v] = ImageProcessor.rgbToHsv(r, g, b);
+      if (grayTarget) {
+        // Target is near-gray: match by low saturation + similar value
+        if (s < 0.22 && Math.abs(v - tV) < grayValTol) sel = 1;
+      } else {
+        // Circular hue distance
+        let dh = Math.abs(h - tH);
+        if (dh > 0.5) dh = 1 - dh;
+        const ds = Math.abs(s - tS);
+        const dv = Math.abs(v - tV);
+        // Require decent saturation on the candidate so gray isn't matched as "blue"
+        if (dh < hueTol && ds < satTol && dv < valTol && s > 0.12) sel = 1;
+      }
+      this.selected[i] = sel;
+      if (sel) this.hasSelection = true;
+    }
+    this._applySelectionAlpha();
+  }
+
+  clearSelection() {
+    if (!this.count) return;
+    this.hasSelection = false;
+    for (let i = 0; i < this.count; i++) this.selected[i] = 0;
+    this._applySelectionAlpha();
+  }
+
+  _applySelectionAlpha() {
+    const a = this.geometry.getAttribute('aAlpha');
+    const hasSel = this.hasSelection;
+    // Kick off a smooth fade instead of hard alpha jump.
+    // IMPORTANT: reallocate if the particle count changed (e.g. resolution
+    // slider rebuild). A stale _targetAlpha from a smaller build returns
+    // undefined for out-of-range indices, which poisons aAlpha with NaN and
+    // makes those particles vanish in the shader.
+    if (!this._targetAlpha || this._targetAlpha.length !== this.count) {
+      this._targetAlpha = new Float32Array(this.count);
+    }
+    for (let i = 0; i < this.count; i++) {
+      this._targetAlpha[i] = hasSel ? (this.selected[i] ? 1.0 : 0.03) : 1.0;
+    }
+    this._alphaFading = true;
+  }
+
+  _stepAlphaFade(dt) {
+    if (!this._alphaFading || !this._targetAlpha) return;
+    const a = this.geometry.getAttribute('aAlpha');
+    const speed = Math.min(1, dt * 4.5); // ~220ms fade
+    let done = true;
+    for (let i = 0; i < this.count; i++) {
+      const cur = a.array[i];
+      const tgt = this._targetAlpha[i];
+      const next = cur + (tgt - cur) * speed;
+      a.array[i] = next;
+      if (Math.abs(next - tgt) > 0.002) done = false;
+    }
+    a.needsUpdate = true;
+    if (done) this._alphaFading = false;
+  }
+
+  /** Per-frame update.
+   * interaction = {
+   *   idleAmount, cursorPull, cursorRadius,
+   *   pointerActive, pointerWorld  (THREE.Vector3),
+   *   time (seconds), disableDynamics (bool)
+   * }
+   */
+  update(dt, interaction) {
+    if (!this.count) return;
+    const I = interaction || {};
+    const time = I.time ?? (performance.now() * 0.001);
+
+    // Selection alpha smoothing (runs every frame if fading)
+    if (this.entryProgress >= 1.0) this._stepAlphaFade(dt);
+
+    const posAttr = this.geometry.getAttribute('position');
+    const aAlpha = this.geometry.getAttribute('aAlpha');
+    const hasSel = this.hasSelection;
+    const modeArr = this.modeArrayFor(this.targetMode);
+    const curPos = this.curPos;
+    const vel = this.vel;
+
+    // --- Entry animation: direct scatter→mode lerp ---
+    if (this.entryProgress < 1.0) {
+      const progress = this.entryProgress;
+      for (let i = 0; i < this.count; i++) {
+        const i3 = i * 3;
+        const delay = this.entryDelay[i];
+        const localT = Math.max(0, Math.min(1, (progress - delay) / Math.max(0.0001, (1 - delay) * 0.9)));
+        const eased = localT * localT * (3 - 2 * localT);
+        const sx = this.scatterPos[i3], sy = this.scatterPos[i3 + 1], sz = this.scatterPos[i3 + 2];
+        const tx = modeArr[i3], ty = modeArr[i3 + 1], tz = modeArr[i3 + 2];
+        curPos[i3]     = sx + (tx - sx) * eased;
+        curPos[i3 + 1] = sy + (ty - sy) * eased;
+        curPos[i3 + 2] = sz + (tz - sz) * eased;
+        aAlpha.array[i] = hasSel
+          ? eased * (this.selected[i] ? 1.0 : 0.03)
+          : eased;
+      }
+      posAttr.needsUpdate = true;
+      aAlpha.needsUpdate = true;
+      return;
+    }
+
+    // --- Mode transition: direct from→to lerp ---
+    if (this.inTransition) {
+      const t = (performance.now() - this.transitionStart) / (this.transitionDur * 1000);
+      if (t >= 1) {
+        // snap to final, clear transition state
+        curPos.set(modeArr);
+        vel.fill(0);
+        this.inTransition = false;
+      } else {
+        const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; // easeInOutCubic
+        const from = this.transitionFromPos;
+        for (let i = 0; i < this.count; i++) {
+          const i3 = i * 3;
+          curPos[i3]     = from[i3]     + (modeArr[i3]     - from[i3])     * e;
+          curPos[i3 + 1] = from[i3 + 1] + (modeArr[i3 + 1] - from[i3 + 1]) * e;
+          curPos[i3 + 2] = from[i3 + 2] + (modeArr[i3 + 2] - from[i3 + 2]) * e;
+        }
+        posAttr.needsUpdate = true;
+        return;
+      }
+    }
+
+    // --- Steady state: light physics toward modeArr + subtle idle + subtle cursor pull ---
+    const disableDyn = !!I.disableDynamics;
+    const stiffness = 0.09;
+    const damping = 0.82;
+    const idleAmp = disableDyn ? 0 : (I.idleAmount ?? 0);
+    const pullMag = disableDyn ? 0 : (I.cursorPull ?? 0);
+    const pullR = I.cursorRadius ?? 22;
+    const pullR2 = pullR * pullR;
+    const pActive = disableDyn ? false : !!I.pointerActive;
+    const pw = I.pointerWorld;
+    const pwx = pw ? pw.x : 0, pwy = pw ? pw.y : 0, pwz = pw ? pw.z : 0;
+
+    for (let i = 0; i < this.count; i++) {
+      const i3 = i * 3;
+
+      // Baseline target + idle offset
+      let tx = modeArr[i3], ty = modeArr[i3 + 1], tz = modeArr[i3 + 2];
+      if (idleAmp > 0) {
+        tx += Math.sin(time * 0.8  + i * 0.147) * idleAmp;
+        ty += Math.cos(time * 0.95 + i * 0.213) * idleAmp;
+        tz += Math.sin(time * 1.15 + i * 0.081) * idleAmp * 1.2;
+      }
+
+      // Spring force
+      let fx = (tx - curPos[i3])     * stiffness;
+      let fy = (ty - curPos[i3 + 1]) * stiffness;
+      let fz = (tz - curPos[i3 + 2]) * stiffness;
+
+      // Cursor pull (subtle magnetic)
+      if (pActive && pullMag > 0) {
+        const dx = pwx - curPos[i3];
+        const dy = pwy - curPos[i3 + 1];
+        const dz = pwz - curPos[i3 + 2];
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < pullR2) {
+          const falloff = 1 - d2 / pullR2;
+          const inv = 1 / Math.sqrt(d2 + 0.01);
+          const m = pullMag * falloff * falloff;
+          fx += dx * inv * m;
+          fy += dy * inv * m;
+          fz += dz * inv * m;
+        }
+      }
+
+      vel[i3]     = (vel[i3]     + fx) * damping;
+      vel[i3 + 1] = (vel[i3 + 1] + fy) * damping;
+      vel[i3 + 2] = (vel[i3 + 2] + fz) * damping;
+
+      curPos[i3]     += vel[i3];
+      curPos[i3 + 1] += vel[i3 + 1];
+      curPos[i3 + 2] += vel[i3 + 2];
+    }
+    posAttr.needsUpdate = true;
+  }
+
+  /** Camera framing radius for the current target mode. */
+  framingRadius() {
+    // All modes are centered on origin; characteristic radius is worldSize * ~0.65.
+    return this.worldSize * 0.65;
+  }
+}
+
+// ============================================================
+// 3. CameraController — smooth framing transitions
+// ============================================================
+class CameraController {
+  constructor(camera, controls) {
+    this.camera = camera;
+    this.controls = controls;
+    this.tween = null;
+  }
+
+  framingFor(mode, field) {
+    const target = new THREE.Vector3(0, 0, 0);
+    const fov = (this.camera.fov * Math.PI) / 180;
+    const aspect = Math.max(0.0001, this.camera.aspect);
+    const tanHalf = Math.tan(fov / 2);
+
+    // Compute the half-extents we need to fit for this mode.
+    // Image mode uses the actual sampled pixel dimensions (so landscape images
+    // in a portrait window don't get horizontally cropped). RGB/HSV use a
+    // conservative bounding sphere around the whole cloud.
+    let halfW, halfH;
+    if (mode === 'image') {
+      halfW = field.imgW / 2;
+      halfH = field.imgH / 2;
+    } else {
+      const r = field.worldSize * 0.75; // covers both the rgb cube and hsv cylinder
+      halfW = r;
+      halfH = r;
+    }
+
+    // Distance to fit vertically and horizontally (FOV is vertical; horizontal
+    // FOV is scaled by the camera aspect).
+    const distV = halfH / tanHalf;
+    const distH = halfW / (tanHalf * aspect);
+    const dist = Math.max(distV, distH) * 1.08; // 8% framing margin
+
+    if (mode === 'image') return { position: new THREE.Vector3(0, 0, dist), target };
+    if (mode === 'rgb')   return { position: new THREE.Vector3(dist * 0.6,  dist * 0.5,  dist * 0.85), target };
+    if (mode === 'hsv')   return { position: new THREE.Vector3(dist * 0.55, dist * 0.45, dist * 0.85), target };
+    return { position: new THREE.Vector3(0, 0, dist), target };
+  }
+
+  animateTo(position, target, duration = 0.9) {
+    if (this.tween) cancelAnimationFrame(this.tween.raf);
+    const from = { pos: this.camera.position.clone(), tgt: this.controls.target.clone() };
+    const to = { pos: position.clone(), tgt: target.clone() };
+    const t0 = performance.now();
+    this.controls.enabled = false;
+    const step = () => {
+      const t = Math.min(1, (performance.now() - t0) / (duration * 1000));
+      const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      this.camera.position.lerpVectors(from.pos, to.pos, e);
+      this.controls.target.lerpVectors(from.tgt, to.tgt, e);
+      this.controls.update();
+      if (t < 1) this.tween.raf = requestAnimationFrame(step);
+      else { this.tween = null; this.controls.enabled = true; }
+    };
+    this.tween = { raf: requestAnimationFrame(step) };
+  }
+
+  setInstant(position, target) {
+    this.camera.position.copy(position);
+    this.controls.target.copy(target);
+    // Clear any residual damping state (sphericalDelta/panOffset are closure-local
+    // in OrbitControls — the only way to drain them is to call update() with
+    // damping off, which applies any outstanding delta and then zeroes it).
+    const prevDamping = this.controls.enableDamping;
+    this.controls.enableDamping = false;
+    this.camera.position.copy(position);
+    this.controls.target.copy(target);
+    this.controls.update();
+    // Re-assert in case the single update still displaced us (it shouldn't with
+    // damping off, but belt-and-braces).
+    this.camera.position.copy(position);
+    this.controls.target.copy(target);
+    this.camera.lookAt(target);
+    this.controls.enableDamping = prevDamping;
+  }
+}
+
+// ============================================================
+// 4. Renderer + scene
+// ============================================================
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x07080a, 1);
+document.getElementById('canvas-root').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 5000);
+camera.position.set(0, 0, 260);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.rotateSpeed = 0.7;
+controls.zoomSpeed = 0.9;
+controls.panSpeed = 0.7;
+
+const field = new ParticleField(scene);
+const cam = new CameraController(camera, controls);
+
+// ============================================================
+// 5. State
+// ============================================================
+const state = {
+  ...DEFAULTS,
+  originalResample: null,
+  adjusted: null,
+  processed: null,
+  sourceImage: null,
+  entryStart: 0,
+  entering: false,
+  // Pointer world position (for cursor pull)
+  pointerActive: false,
+  pointerWorld: new THREE.Vector3(1e6, 1e6, 1e6),
+  // Export flag suspends the normal render loop
+  exporting: false,
+};
+
+// ============================================================
+// 6. UI bindings
+// ============================================================
+const $ = sel => document.querySelector(sel);
+const ui = {
+  fileInput: $('#file'),
+  btnSample: $('#btn-sample'),
+  btnReset: $('#btn-reset'),
+  btnClearSel: $('#btn-clear-sel'),
+  btnPNG: $('#btn-png'),
+  btnVideo: $('#btn-video'),
+  welcomeSample: $('#welcome-sample'),
+  welcome: $('#welcome'),
+  palette: $('#palette'),
+
+  segMode: $('#seg-mode'),
+  segDepth: $('#seg-depth'),
+  depthControls: $('#depth-controls'),
+  slDepth: $('#sl-depth'), valDepth: $('#val-depth'),
+  slSize: $('#sl-size'),   valSize: $('#val-size'),
+  slIdle: $('#sl-idle'),   valIdle: $('#val-idle'),
+  slPull: $('#sl-pull'),   valPull: $('#val-pull'),
+  slRot:  $('#sl-rot'),    valRot:  $('#val-rot'),
+  slHue: $('#sl-hue'),     valHue: $('#val-hue'),
+  slBright: $('#sl-bright'), valBright: $('#val-bright'),
+  slContrast: $('#sl-contrast'), valContrast: $('#val-contrast'),
+  slPalette: $('#sl-palette'), valPalette: $('#val-palette'),
+  slRes: $('#sl-res'), valRes: $('#val-res'),
+
+  hudCount: $('#hud-count'),
+  hudFps: $('#hud-fps'),
+  hudMode: $('#hud-mode'),
+  hudDim: $('#hud-dim'),
+  srcInfo: $('#src-info'),
+
+  tip: $('#tip'), tipSw: $('#tip-sw'), tipText: $('#tip-text'),
+  overlay: $('#overlay'),
+  ovTitle: $('#ov-title'), ovSub: $('#ov-sub'), ovFill: $('#ov-fill'),
+  brandTitle: document.querySelector('#brand .title'),
+  infoModal: $('#info-modal'),
+  infoClose: $('#info-close'),
+};
+
+function bindSeg(root, onChange) {
+  root.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-v]');
+    if (!b) return;
+    for (const c of root.children) c.classList.toggle('on', c === b);
+    onChange(b.dataset.v);
+  });
+}
+bindSeg(ui.segMode, (v) => {
+  state.mode = v;
+  field.setMode(v, 1.2);
+  const framing = cam.framingFor(v, field);
+  cam.animateTo(framing.position, framing.target, 0.9);
+  setHudMode();
+  updateDepthControlVisibility();
+});
+
+function updateDepthControlVisibility() {
+  // Depth source is only meaningful in image mode
+  ui.depthControls.style.display = state.mode === 'image' ? '' : 'none';
+}
+bindSeg(ui.segDepth, (v) => {
+  state.depthMode = v;
+  field.applyDepthMode(state.depthMode, state.depthAmount);
+  setHudMode();
+});
+
+function setHudMode() {
+  const m = state.mode;
+  ui.hudMode.textContent = m === 'rgb' ? 'RGB Linear' : m === 'hsv' ? 'HSV' : `image · ${state.depthMode}`;
+}
+
+function bindSlider(el, val, fmt, onChange) {
+  const update = () => { val.textContent = fmt(el.value); };
+  el.addEventListener('input', () => { update(); onChange(parseFloat(el.value)); });
+  update();
+}
+bindSlider(ui.slDepth, ui.valDepth, v => v, v => {
+  state.depthAmount = v;
+  field.applyDepthMode(state.depthMode, state.depthAmount);
+});
+bindSlider(ui.slSize, ui.valSize, v => parseFloat(v).toFixed(1), v => {
+  state.voxelSize = v; field.setVoxelSize(v);
+});
+bindSlider(ui.slIdle, ui.valIdle, v => parseFloat(v).toFixed(2), v => { state.idleMotion = v; });
+bindSlider(ui.slPull, ui.valPull, v => parseFloat(v).toFixed(2), v => { state.cursorPull = v; });
+bindSlider(ui.slRot,  ui.valRot,  v => parseFloat(v).toFixed(3), v => { state.sceneRotation = v; });
+bindSlider(ui.slHue, ui.valHue, v => `${v}°`, v => { state.hue = v; scheduleAdjustUpdate(); });
+bindSlider(ui.slBright, ui.valBright, v => v, v => { state.brightness = v; scheduleAdjustUpdate(); });
+bindSlider(ui.slContrast, ui.valContrast, v => v, v => { state.contrast = v; scheduleAdjustUpdate(); });
+bindSlider(ui.slPalette, ui.valPalette, v => v, v => { state.paletteColors = parseInt(v); scheduleAdjustUpdate(); });
+bindSlider(ui.slRes, ui.valRes, v => v, v => { state.resolution = parseInt(v); scheduleResolutionRebuild(); });
+
+ui.btnReset.addEventListener('click', resetAll);
+ui.btnClearSel.addEventListener('click', () => field.clearSelection());
+ui.btnPNG.addEventListener('click', exportPNG);
+ui.btnVideo.addEventListener('click', exportVideo);
+
+// Info modal: click brand title → open; close button or backdrop → close
+ui.brandTitle.addEventListener('click', () => ui.infoModal.classList.add('on'));
+ui.infoClose.addEventListener('click', () => ui.infoModal.classList.remove('on'));
+ui.infoModal.addEventListener('click', (e) => {
+  if (e.target === ui.infoModal) ui.infoModal.classList.remove('on');
+});
+
+ui.fileInput.addEventListener('change', async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  try {
+    const el = await ImageProcessor.loadElement(f);
+    await loadFromElement(el, f.name);
+  } finally {
+    ui.fileInput.value = '';
+  }
+});
+ui.btnSample.addEventListener('click', async () => {
+  await loadFromElement(await generateSample(128, 128), 'sample');
+});
+ui.welcomeSample.addEventListener('click', async () => {
+  await loadFromElement(await generateSample(128, 128), 'sample');
+});
+
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  const f = e.dataTransfer.files?.[0];
+  if (f && f.type.startsWith('image/')) {
+    await loadFromElement(await ImageProcessor.loadElement(f), f.name);
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (state.exporting) return;
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+// ============================================================
+// 7. Load / reset pipelines
+// ============================================================
+function resetUIControlsToDefaults() {
+  ui.slDepth.value = DEFAULTS.depthAmount; ui.valDepth.textContent = DEFAULTS.depthAmount;
+  ui.slSize.value = DEFAULTS.voxelSize; ui.valSize.textContent = DEFAULTS.voxelSize.toFixed(1);
+  ui.slIdle.value = DEFAULTS.idleMotion; ui.valIdle.textContent = DEFAULTS.idleMotion.toFixed(2);
+  ui.slPull.value = DEFAULTS.cursorPull; ui.valPull.textContent = DEFAULTS.cursorPull.toFixed(2);
+  ui.slRot.value  = DEFAULTS.sceneRotation; ui.valRot.textContent = DEFAULTS.sceneRotation.toFixed(3);
+  ui.slHue.value = DEFAULTS.hue; ui.valHue.textContent = `${DEFAULTS.hue}°`;
+  ui.slBright.value = DEFAULTS.brightness; ui.valBright.textContent = DEFAULTS.brightness;
+  ui.slContrast.value = DEFAULTS.contrast; ui.valContrast.textContent = DEFAULTS.contrast;
+  ui.slPalette.value = DEFAULTS.paletteColors; ui.valPalette.textContent = DEFAULTS.paletteColors;
+  ui.slRes.value = DEFAULTS.resolution; ui.valRes.textContent = DEFAULTS.resolution;
+
+  for (const b of ui.segMode.children) b.classList.toggle('on', b.dataset.v === DEFAULTS.mode);
+  for (const b of ui.segDepth.children) b.classList.toggle('on', b.dataset.v === DEFAULTS.depthMode);
+
+  Object.assign(state, {
+    mode: DEFAULTS.mode,
+    depthMode: DEFAULTS.depthMode,
+    depthAmount: DEFAULTS.depthAmount,
+    voxelSize: DEFAULTS.voxelSize,
+    idleMotion: DEFAULTS.idleMotion,
+    cursorPull: DEFAULTS.cursorPull,
+    sceneRotation: DEFAULTS.sceneRotation,
+    hue: DEFAULTS.hue,
+    brightness: DEFAULTS.brightness,
+    contrast: DEFAULTS.contrast,
+    paletteColors: DEFAULTS.paletteColors,
+    resolution: DEFAULTS.resolution,
+  });
+  updateDepthControlVisibility();
+}
+
+async function loadFromElement(imgEl, nameForInfo = '') {
+  // Drop the landing ambient cloud the moment a real image starts loading
+  hideAmbient();
+  showOverlay('Processing image', nameForInfo || 'Preparing pixel data');
+  await new Promise(r => requestAnimationFrame(r));
+  try {
+    resetUIControlsToDefaults();
+    state.sourceImage = imgEl;
+
+    state.originalResample = ImageProcessor.resample(imgEl, state.resolution);
+    state.adjusted = ImageProcessor.applyAdjustments(state.originalResample, {
+      hue: state.hue, brightness: state.brightness, contrast: state.contrast,
+    });
+    state.processed = ImageProcessor.quantize(state.adjusted, state.paletteColors).image;
+
+    field.build(state.processed);
+    field.setVoxelSize(state.voxelSize);
+    field.applyDepthMode(state.depthMode, state.depthAmount);
+    field.targetMode = 'image';
+    field.inTransition = false;
+    field.clearSelection();
+
+    refreshPalette();
+
+    ui.hudCount.textContent = field.count.toLocaleString();
+    ui.hudDim.textContent = `${field.imgW}×${field.imgH}`;
+    setHudMode();
+    ui.srcInfo.textContent = nameForInfo
+      ? `Loaded: ${nameForInfo} · ${imgEl.width}×${imgEl.height} → sampled ${field.imgW}×${field.imgH}`
+      : `Loaded · ${imgEl.width}×${imgEl.height} → sampled ${field.imgW}×${field.imgH}`;
+
+    // Refresh aspect + hard reset drift before framing.
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    controls.target.set(0, 0, 0);
+    field.group.rotation.set(0, 0, 0);
+    const framing = cam.framingFor('image', field);
+    cam.setInstant(framing.position, framing.target);
+    lockCamera(framing.position, framing.target);
+
+    playEntryAnimation();
+    ui.welcome.style.display = 'none';
+    document.body.classList.remove('landing');
+  } catch (err) {
+    console.error('Pixel Space: load failed', err);
+    ui.ovTitle.textContent = 'Image load failed';
+    ui.ovSub.textContent = (err && err.message) || 'See console for details';
+    setTimeout(hideOverlay, 2200);
+    return;
+  }
+  hideOverlay();
+}
+
+function resetAll() {
+  if (!state.sourceImage) { resetUIControlsToDefaults(); return; }
+  resetUIControlsToDefaults();
+  state.originalResample = ImageProcessor.resample(state.sourceImage, state.resolution);
+  state.adjusted = ImageProcessor.applyAdjustments(state.originalResample, {
+    hue: state.hue, brightness: state.brightness, contrast: state.contrast,
+  });
+  state.processed = ImageProcessor.quantize(state.adjusted, state.paletteColors).image;
+
+  field.build(state.processed);
+  field.setVoxelSize(state.voxelSize);
+  field.applyDepthMode(state.depthMode, state.depthAmount);
+  field.targetMode = 'image';
+  field.inTransition = false;
+  field.clearSelection();
+
+  refreshPalette();
+  ui.hudCount.textContent = field.count.toLocaleString();
+  ui.hudDim.textContent = `${field.imgW}×${field.imgH}`;
+  setHudMode();
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  controls.target.set(0, 0, 0);
+  field.group.rotation.set(0, 0, 0);
+  const framing = cam.framingFor('image', field);
+  cam.setInstant(framing.position, framing.target);
+  lockCamera(framing.position, framing.target);
+  playEntryAnimation();
+}
+
+function playEntryAnimation() {
+  state.entering = true;
+  state.entryStart = performance.now();
+  field.setEntryProgress(0);
+}
+
+// Holds {position, target} while we want to pin the camera in place despite
+// OrbitControls damping residuals. Cleared once the entry animation is done.
+state.cameraLock = null;
+function lockCamera(position, target) {
+  state.cameraLock = { position: position.clone(), target: target.clone() };
+}
+function releaseCamera() { state.cameraLock = null; }
+
+let adjustTimer = null;
+function scheduleAdjustUpdate() {
+  clearTimeout(adjustTimer);
+  adjustTimer = setTimeout(() => {
+    if (!state.originalResample) return;
+    state.adjusted = ImageProcessor.applyAdjustments(state.originalResample, {
+      hue: state.hue, brightness: state.brightness, contrast: state.contrast,
+    });
+    state.processed = ImageProcessor.quantize(state.adjusted, state.paletteColors).image;
+    if (field.updateColorsFrom(state.processed)) {
+      field.applyDepthMode(state.depthMode, state.depthAmount);
+    }
+    refreshPalette();
+  }, 40);
+}
+
+let resTimer = null;
+function scheduleResolutionRebuild() {
+  clearTimeout(resTimer);
+  resTimer = setTimeout(() => {
+    if (!state.sourceImage) return;
+    state.originalResample = ImageProcessor.resample(state.sourceImage, state.resolution);
+    state.adjusted = ImageProcessor.applyAdjustments(state.originalResample, {
+      hue: state.hue, brightness: state.brightness, contrast: state.contrast,
+    });
+    state.processed = ImageProcessor.quantize(state.adjusted, state.paletteColors).image;
+    field.build(state.processed);
+    field.setVoxelSize(state.voxelSize);
+    field.applyDepthMode(state.depthMode, state.depthAmount);
+    field.targetMode = state.mode;
+    field.inTransition = false;
+    field.clearSelection();
+    ui.hudCount.textContent = field.count.toLocaleString();
+    ui.hudDim.textContent = `${field.imgW}×${field.imgH}`;
+    refreshPalette();
+    // Re-frame for the new world size — otherwise higher resolutions clip.
+    // Hard reset any drift before framing so the computed distance actually matches
+    // what's on screen: fresh aspect, zeroed target, zeroed group rotation.
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    controls.target.set(0, 0, 0);
+    field.group.rotation.set(0, 0, 0);
+    const framing = cam.framingFor(state.mode, field);
+    cam.setInstant(framing.position, framing.target);
+    lockCamera(framing.position, framing.target);
+    // Entry animation after rebuild so the change feels intentional
+    playEntryAnimation();
+  }, 140);
+}
+
+// ============================================================
+// 8. Analysis palette
+// ============================================================
+function refreshPalette() {
+  if (!state.processed) { ui.palette.innerHTML = ''; return; }
+  const colors = ImageProcessor.dominantColors(state.processed, 10);
+  ui.palette.innerHTML = '';
+  for (const c of colors) {
+    const el = document.createElement('div');
+    el.className = 'swatch';
+    el.innerHTML = `
+      <div class="chip" style="background: rgb(${c.r},${c.g},${c.b})"></div>
+      <div class="meta">${Math.round(c.pct * 100)}%</div>
+    `;
+    el.title = `rgb(${c.r}, ${c.g}, ${c.b}) · ${(c.pct * 100).toFixed(1)}%`;
+    el.addEventListener('click', () => {
+      field.selectByColor(c.r, c.g, c.b);
+    });
+    ui.palette.appendChild(el);
+  }
+}
+
+// ============================================================
+// 9. Interaction
+// ============================================================
+const raycaster = new THREE.Raycaster();
+raycaster.params.Points.threshold = 1.5;
+const ndc = new THREE.Vector2();
+
+function updatePointerFromEvent(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  ndc.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+  raycaster.setFromCamera(ndc, camera);
+  // World-space point on a plane through origin facing the camera
+  const planeN = camera.getWorldDirection(new THREE.Vector3()).negate();
+  const plane = new THREE.Plane(planeN, 0);
+  const out = new THREE.Vector3();
+  if (raycaster.ray.intersectPlane(plane, out)) {
+    state.pointerWorld.copy(out);
+    state.pointerActive = true;
+  }
+}
+
+function pickParticleIndex(clientX, clientY, thr = 1.5) {
+  if (!field.count) return -1;
+  const rect = renderer.domElement.getBoundingClientRect();
+  ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  ndc.y = -(((clientY - rect.top) / rect.height) * 2 - 1);
+  raycaster.setFromCamera(ndc, camera);
+  const prev = raycaster.params.Points.threshold;
+  raycaster.params.Points.threshold = thr;
+  const hits = raycaster.intersectObject(field.points, false);
+  raycaster.params.Points.threshold = prev;
+  return hits.length ? hits[0].index : -1;
+}
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  updatePointerFromEvent(e);
+  // Hover tooltip
+  if (!field.count) { ui.tip.style.display = 'none'; return; }
+  const idx = pickParticleIndex(e.clientX, e.clientY, 2.5);
+  if (idx >= 0) {
+    const r = field.color[idx * 3], g = field.color[idx * 3 + 1], b = field.color[idx * 3 + 2];
+    const x = idx % field.imgW, y = Math.floor(idx / field.imgW);
+    ui.tipSw.style.background = `rgb(${r},${g},${b})`;
+    ui.tipText.textContent = `(${x},${y}) · rgb(${r}, ${g}, ${b})`;
+    ui.tip.style.display = 'block';
+    ui.tip.style.left = e.clientX + 'px';
+    ui.tip.style.top = e.clientY + 'px';
+  } else {
+    ui.tip.style.display = 'none';
+  }
+});
+renderer.domElement.addEventListener('pointerleave', () => {
+  ui.tip.style.display = 'none';
+  state.pointerActive = false;
+});
+
+// Click to select / clear
+let _downX = 0, _downY = 0, _downT = 0;
+renderer.domElement.addEventListener('pointerdown', (e) => { _downX = e.clientX; _downY = e.clientY; _downT = performance.now(); });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  const moved = Math.hypot(e.clientX - _downX, e.clientY - _downY);
+  const dt = performance.now() - _downT;
+  if (moved > 4 || dt > 350) return;
+  const idx = pickParticleIndex(e.clientX, e.clientY, 1.8);
+  if (idx >= 0) {
+    const r = field.color[idx * 3], g = field.color[idx * 3 + 1], b = field.color[idx * 3 + 2];
+    field.selectByColor(r, g, b);
+  } else {
+    field.clearSelection();
+  }
+});
+
+// ============================================================
+// 10. Render loop
+// ============================================================
+const clock = new THREE.Clock();
+let frameCount = 0, lastFps = performance.now();
+
+function render() {
+  requestAnimationFrame(render);
+  if (state.exporting) return; // suspended during video export
+
+  const dt = Math.min(0.05, clock.getDelta());
+
+  // Advance entry animation progress by wall-clock
+  if (state.entering) {
+    const t = (performance.now() - state.entryStart) / (field.entryDuration * 1000);
+    const eased = Math.min(1, t);
+    field.setEntryProgress(eased);
+    if (eased >= 1) {
+      state.entering = false;
+      releaseCamera();
+    }
+  }
+
+  // If we've pinned the camera (e.g. just after a rebuild) hold it in place.
+  // This defeats OrbitControls damping residuals that would otherwise drift the
+  // target off-origin and cause the image to appear cropped / tilted.
+  if (state.cameraLock) {
+    camera.position.copy(state.cameraLock.position);
+    controls.target.copy(state.cameraLock.target);
+    camera.lookAt(state.cameraLock.target);
+  } else {
+    controls.update();
+  }
+
+  // Slow automatic rotation (particle cloud + ambient)
+  if (state.sceneRotation > 0) {
+    field.group.rotation.y += state.sceneRotation * dt;
+    if (!ambientDisposed) {
+      ambient.points.rotation.y += state.sceneRotation * 0.5 * dt;
+    }
+  }
+
+  field.update(dt, {
+    idleAmount: state.idleMotion,
+    cursorPull: state.cursorPull,
+    cursorRadius: 22,
+    pointerActive: state.pointerActive,
+    pointerWorld: state.pointerWorld,
+    time: performance.now() * 0.001,
+    disableDynamics: false,
+  });
+  stepAmbient(dt);
+  renderer.render(scene, camera);
+
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFps >= 500) {
+    ui.hudFps.textContent = Math.round((frameCount * 1000) / (now - lastFps));
+    frameCount = 0; lastFps = now;
+  }
+}
+// NOTE: render() is started at the end of the module after all init runs
+// (ambient cloud etc. must be declared before the first frame).
+
+// ============================================================
+// 11. Overlay helpers
+// ============================================================
+function showOverlay(title, sub) {
+  ui.overlay.classList.add('on');
+  ui.ovTitle.textContent = title;
+  ui.ovSub.textContent = sub || '';
+  ui.ovFill.style.width = '0%';
+}
+function updateOverlay(pct, sub) {
+  ui.ovFill.style.width = `${Math.round(pct * 100)}%`;
+  if (sub) ui.ovSub.textContent = sub;
+}
+function hideOverlay() { ui.overlay.classList.remove('on'); }
+
+// ============================================================
+// 12. Export — PNG
+// ============================================================
+function exportPNG() {
+  if (!field.count) return;
+  const prevSize = renderer.getSize(new THREE.Vector2());
+  const prevPR = renderer.getPixelRatio();
+  const scale = 2;
+  renderer.setPixelRatio(prevPR);
+  renderer.setSize(prevSize.x * scale, prevSize.y * scale, false);
+  camera.aspect = (prevSize.x * scale) / (prevSize.y * scale);
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+  const url = renderer.domElement.toDataURL('image/png');
+  renderer.setSize(prevSize.x, prevSize.y, false);
+  camera.aspect = prevSize.x / prevSize.y;
+  camera.updateProjectionMatrix();
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pixel-space-${Date.now()}.png`;
+  a.click();
+}
+
+// ============================================================
+// 13. Export — Video (.mov via MediaRecorder)
+//     Drives the black → image → RGB Linear → HSV → image cycle deterministically
+//     at 1280×1280 / 60 fps, captured via canvas.captureStream().
+//     Camera only moves between mode framings (no per-hold orbit); the particle
+//     cloud itself rotates continuously around Y so transitions are seamless.
+// ============================================================
+async function exportVideo() {
+  if (!field.count) return;
+  if (typeof MediaRecorder === 'undefined') {
+    alert('MediaRecorder is not available in this browser.');
+    return;
+  }
+
+  // Prefer MP4/H.264 (saved as .mov — same ISOBMFF container as .mp4, plays in
+  // QuickTime and every modern video tool). Fall back to WebM if MP4 isn't
+  // supported (e.g. Firefox MediaRecorder).
+  const mimeCandidates = [
+    'video/mp4; codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4; codecs=avc1.42E01E',
+    'video/mp4',
+    'video/webm; codecs=vp9',
+    'video/webm; codecs=vp8',
+    'video/webm',
+  ];
+  const mimeType = mimeCandidates.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+  const isMp4 = mimeType.startsWith('video/mp4');
+  const outExt = isMp4 ? 'mov' : 'webm';
+
+  // Snapshot current state
+  const prev = {
+    size: renderer.getSize(new THREE.Vector2()),
+    pr: renderer.getPixelRatio(),
+    camPos: camera.position.clone(),
+    camTgt: controls.target.clone(),
+    mode: state.mode,
+    targetMode: field.targetMode,
+    hasSel: field.hasSelection,
+    groupRotY: field.group.rotation.y,
+  };
+
+  // Reset rotation so the opening frame is aligned consistently
+  field.group.rotation.y = 0;
+
+  const W = 1280, H = 1280;
+  showOverlay('Recording video', 'Preparing renderer…');
+  await new Promise(r => requestAnimationFrame(r));
+
+  state.exporting = true;
+  controls.enabled = false;
+  field.clearSelection();
+
+  renderer.setPixelRatio(1);
+  renderer.setSize(W, H, false);
+  camera.aspect = 1;
+  camera.updateProjectionMatrix();
+  renderer.setClearColor(0x000000, 1);
+
+  const framings = {
+    image: cam.framingFor('image', field),
+    rgb:   cam.framingFor('rgb', field),
+    hsv:   cam.framingFor('hsv', field),
+  };
+
+  const phases = [
+    { name: 'black_start', dur: 0.8 },   // pure black hold
+    { name: 'entry',       dur: 2.4 },   // image forms (wave animation) — fades in from black
+    { name: 'hold_image',  dur: 1.4 },   // pause + slow rotation
+    { name: 'to_rgb',      dur: 2.0 },   // transition to RGB Linear
+    { name: 'hold_rgb',    dur: 2.2 },   // pause + rotate
+    { name: 'to_hsv',      dur: 2.0 },   // transition to HSV
+    { name: 'hold_hsv',    dur: 2.2 },   // pause + rotate
+    { name: 'to_image',    dur: 2.0 },   // transition back to image
+    { name: 'hold_end',    dur: 1.2 },   // end cleanly
+  ];
+  const total = phases.reduce((a, p) => a + p.dur, 0);
+  const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  // Render one frame first (black) so captureStream has content.
+  field.setEntryProgress(0);
+  field.targetMode = 'image';
+  field.inTransition = false;
+  field.vel.fill(0);
+  field.curPos.set(field.scatterPos);
+  field.geometry.getAttribute('position').needsUpdate = true;
+  // Zero-alpha first frame = black
+  const _a = field.geometry.getAttribute('aAlpha');
+  for (let i = 0; i < field.count; i++) _a.array[i] = 0;
+  _a.needsUpdate = true;
+  cam.setInstant(framings.image.position, framings.image.target);
+  renderer.render(scene, camera);
+
+  const stream = renderer.domElement.captureStream(60);
+  const recorder = new MediaRecorder(stream, {
+    mimeType,
+    videoBitsPerSecond: 12_000_000,
+  });
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const finished = new Promise(resolve => { recorder.onstop = resolve; });
+
+  // Uniform alpha buffer for global fade-in from black
+  const aAlphaAttr = field.geometry.getAttribute('aAlpha');
+  const setGlobalAlpha = (alpha) => {
+    for (let i = 0; i < field.count; i++) aAlphaAttr.array[i] = alpha;
+    aAlphaAttr.needsUpdate = true;
+  };
+
+  // Rotation speed applied to the cloud throughout the whole capture
+  // (keeps spinning across transitions so mode switches feel seamless).
+  const EXPORT_ROT_RAD_PER_SEC = 0.22;
+
+  recorder.start();
+  const startT = performance.now();
+
+  // Helper: lerp field positions fromArr → toArr by eased t
+  const lerpPositions = (fromArr, toArr, e) => {
+    for (let i = 0; i < field.count; i++) {
+      const i3 = i * 3;
+      field.curPos[i3]     = fromArr[i3]     + (toArr[i3]     - fromArr[i3])     * e;
+      field.curPos[i3 + 1] = fromArr[i3 + 1] + (toArr[i3 + 1] - fromArr[i3 + 1]) * e;
+      field.curPos[i3 + 2] = fromArr[i3 + 2] + (toArr[i3 + 2] - fromArr[i3 + 2]) * e;
+    }
+  };
+
+  await new Promise(resolve => {
+    function frame() {
+      const t = (performance.now() - startT) / 1000;
+      if (t >= total) { resolve(); return; }
+      requestAnimationFrame(frame);
+
+      // Continuous cloud rotation — runs the whole time, including
+      // during transitions, so mode switches are seamless.
+      field.group.rotation.y = t * EXPORT_ROT_RAD_PER_SEC;
+
+      // find phase + phase progress
+      let acc = 0, phase = phases[0], pt = 0;
+      for (const p of phases) {
+        if (t < acc + p.dur) { phase = p; pt = (t - acc) / p.dur; break; }
+        acc += p.dur;
+      }
+      const e = easeInOut(pt);
+
+      switch (phase.name) {
+        case 'black_start':
+          field.setEntryProgress(0);
+          field.targetMode = 'image';
+          field.inTransition = false;
+          field.curPos.set(field.scatterPos);
+          setGlobalAlpha(0);
+          cam.setInstant(framings.image.position, framings.image.target);
+          break;
+
+        case 'entry':
+          // Wave animation — particles fly in from their scatter positions to
+          // imagePos while their per-particle alpha fades from 0 to 1. Done by
+          // ParticleField.update() when entryProgress < 1; we call it here so
+          // the deterministic capture actually runs the wave (rather than
+          // jumping straight from black to the formed image).
+          // Linear progress — internal smoothstep handles the per-particle easing
+          field.setEntryProgress(pt);
+          field.targetMode = 'image';
+          field.inTransition = false;
+          field.update(1 / 60, { disableDynamics: true });
+          cam.setInstant(framings.image.position, framings.image.target);
+          break;
+
+        case 'hold_image':
+          field.setEntryProgress(1);
+          field.targetMode = 'image';
+          field.inTransition = false;
+          field.curPos.set(field.imagePos);
+          setGlobalAlpha(1);
+          cam.setInstant(framings.image.position, framings.image.target);
+          break;
+
+        case 'to_rgb': {
+          field.setEntryProgress(1);
+          field.targetMode = 'rgb';
+          field.inTransition = false;
+          setGlobalAlpha(1);
+          lerpPositions(field.imagePos, field.rgbPos, e);
+          const pos = new THREE.Vector3().lerpVectors(framings.image.position, framings.rgb.position, e);
+          const tgt = new THREE.Vector3().lerpVectors(framings.image.target,   framings.rgb.target,   e);
+          cam.setInstant(pos, tgt);
+          break;
+        }
+
+        case 'hold_rgb':
+          field.setEntryProgress(1);
+          field.targetMode = 'rgb';
+          field.inTransition = false;
+          field.curPos.set(field.rgbPos);
+          setGlobalAlpha(1);
+          cam.setInstant(framings.rgb.position, framings.rgb.target);
+          break;
+
+        case 'to_hsv': {
+          field.setEntryProgress(1);
+          field.targetMode = 'hsv';
+          field.inTransition = false;
+          setGlobalAlpha(1);
+          lerpPositions(field.rgbPos, field.hsvPos, e);
+          const pos = new THREE.Vector3().lerpVectors(framings.rgb.position, framings.hsv.position, e);
+          const tgt = new THREE.Vector3().lerpVectors(framings.rgb.target,   framings.hsv.target,   e);
+          cam.setInstant(pos, tgt);
+          break;
+        }
+
+        case 'hold_hsv':
+          field.setEntryProgress(1);
+          field.targetMode = 'hsv';
+          field.inTransition = false;
+          field.curPos.set(field.hsvPos);
+          setGlobalAlpha(1);
+          cam.setInstant(framings.hsv.position, framings.hsv.target);
+          break;
+
+        case 'to_image': {
+          field.setEntryProgress(1);
+          field.targetMode = 'image';
+          field.inTransition = false;
+          setGlobalAlpha(1);
+          lerpPositions(field.hsvPos, field.imagePos, e);
+          const pos = new THREE.Vector3().lerpVectors(framings.hsv.position, framings.image.position, e);
+          const tgt = new THREE.Vector3().lerpVectors(framings.hsv.target,   framings.image.target,   e);
+          cam.setInstant(pos, tgt);
+          break;
+        }
+
+        case 'hold_end':
+          field.setEntryProgress(1);
+          field.targetMode = 'image';
+          field.inTransition = false;
+          field.curPos.set(field.imagePos);
+          // Gentle fade-out at the very end for a clean close
+          setGlobalAlpha(1 - e * 0.2);
+          cam.setInstant(framings.image.position, framings.image.target);
+          break;
+      }
+
+      field.geometry.getAttribute('position').needsUpdate = true;
+      renderer.render(scene, camera);
+
+      updateOverlay(t / total, `${Math.round((t / total) * 100)}% · ${phase.name.replace('_', ' ')}`);
+    }
+    requestAnimationFrame(frame);
+  });
+
+  // Stop recording + finalize
+  showOverlay('Finalizing video', 'Encoding…');
+  recorder.stop();
+  stream.getTracks().forEach(tr => tr.stop());
+  await finished;
+
+  // .mov and .mp4 share the same ISO BMFF container, so an MP4 stream is
+  // bit-identical to a QuickTime .mov file and plays in QuickTime/Finder/Final Cut.
+  const blob = new Blob(chunks, { type: isMp4 ? 'video/quicktime' : 'video/webm' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pixel-space-${Date.now()}.${outExt}`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  if (!isMp4) {
+    console.warn('Pixel Space: MP4/H.264 MediaRecorder is not supported in this browser — exported WebM instead of MOV.');
+  }
+
+  // Restore
+  renderer.setPixelRatio(prev.pr);
+  renderer.setSize(prev.size.x, prev.size.y, false);
+  camera.aspect = prev.size.x / prev.size.y;
+  camera.updateProjectionMatrix();
+  cam.setInstant(prev.camPos, prev.camTgt);
+  field.targetMode = prev.targetMode;
+  field.inTransition = false;
+  field.setEntryProgress(1);
+  field.group.rotation.y = prev.groupRotY;
+  setGlobalAlpha(1);
+  renderer.setClearColor(0x07080a, 1);
+  state.exporting = false;
+  controls.enabled = true;
+  hideOverlay();
+}
+
+// ============================================================
+// 14. Init
+// ============================================================
+resetUIControlsToDefaults();
+
+// Landing state — hide panel/brand/hud until an image is loaded, and drift
+// a small cloud of ambient particles in the background.
+document.body.classList.add('landing');
+
+const ambient = (() => {
+  const N = 1400;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(N * 3);
+  const col = new Float32Array(N * 3);
+  const vel = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = 40 + Math.random() * 180;
+    pos[i*3]     = r * Math.sin(phi) * Math.cos(theta);
+    pos[i*3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+    pos[i*3 + 2] = r * Math.cos(phi);
+    vel[i*3]     = (Math.random() - 0.5) * 0.3;
+    vel[i*3 + 1] = (Math.random() - 0.5) * 0.3;
+    vel[i*3 + 2] = (Math.random() - 0.5) * 0.3;
+    const hue = Math.random();
+    const [rr, gg, bb] = (() => {
+      const h = hue * 6, x = 1 - Math.abs((h % 2) - 1);
+      if (h < 1) return [1, x, 0]; if (h < 2) return [x, 1, 0];
+      if (h < 3) return [0, 1, x]; if (h < 4) return [0, x, 1];
+      if (h < 5) return [x, 0, 1]; return [1, 0, x];
+    })();
+    col[i*3] = rr * 0.55 + 0.25; col[i*3 + 1] = gg * 0.55 + 0.25; col[i*3 + 2] = bb * 0.55 + 0.25;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aColor',   new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('aAlpha',   new THREE.BufferAttribute(new Float32Array(N).fill(0.55), 1));
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { uPointSize: { value: 2.2 } },
+    vertexShader: `
+      attribute vec3 aColor; attribute float aAlpha;
+      uniform float uPointSize;
+      varying vec3 vColor; varying float vAlpha;
+      void main(){
+        vColor = aColor; vAlpha = aAlpha;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = uPointSize * (300.0 / max(1.0, -mv.z));
+      }`,
+    fragmentShader: `
+      precision highp float;
+      varying vec3 vColor; varying float vAlpha;
+      void main(){
+        vec2 c = gl_PointCoord - vec2(0.5);
+        float d = length(c);
+        float a = 1.0 - smoothstep(0.35, 0.5, d);
+        if (a <= 0.0) discard;
+        gl_FragColor = vec4(vColor, a * vAlpha);
+      }`,
+  });
+  const points = new THREE.Points(geo, mat);
+  scene.add(points);
+  return { points, geo, pos, vel, N, dispose() {
+    scene.remove(points); geo.dispose(); mat.dispose();
+  } };
+})();
+
+let ambientDisposed = false;
+function stepAmbient(dt) {
+  if (ambientDisposed) return;
+  const { pos, vel, N, geo } = ambient;
+  for (let i = 0; i < N; i++) {
+    pos[i*3]     += vel[i*3]     * dt * 8;
+    pos[i*3 + 1] += vel[i*3 + 1] * dt * 8;
+    pos[i*3 + 2] += vel[i*3 + 2] * dt * 8;
+    // Soft pull toward origin so they don't drift off
+    pos[i*3]     *= 0.9995;
+    pos[i*3 + 1] *= 0.9995;
+    pos[i*3 + 2] *= 0.9995;
+  }
+  geo.getAttribute('position').needsUpdate = true;
+}
+
+function hideAmbient() {
+  if (ambientDisposed) return;
+  ambient.dispose();
+  ambientDisposed = true;
+}
+
+window.PixelSpace = { state, field, camera, controls };
+
+// Start the render loop now that ambient + all init is in place.
+render();
+</script>
+</body>
+</html>
