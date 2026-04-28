@@ -2,7 +2,8 @@
 
 ![Pixel Space](screenshot.png)
 
-A spatial exploration of digital images. Upload a photo and view it as a point cloud in three color spaces:
+An interactive 3D visualizer that turns any image into a point cloud you can rotate, orbit, and dissect. Explore how color behaves by remapping pixels into RGB cubes and HSV cylinders by turning flat images into spatial data.
+
 
 ## Overview
 
